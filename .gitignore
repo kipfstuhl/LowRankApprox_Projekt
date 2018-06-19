@@ -1,0 +1,9 @@
+
+# Emacs backups
+*~
+
+# .gitignore from github for julia
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+deps/deps.jl
