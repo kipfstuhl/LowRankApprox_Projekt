@@ -1,4 +1,5 @@
 
+module tensor
 
 
 """
@@ -30,4 +31,7 @@ function mode_n_mult(a,n, m)
     new_dims[n] = size(m,1)
     b = m*unfolding(a, n)
     folding(b,n,new_dims)
+end
+
+
 end
