@@ -85,7 +85,7 @@ function mode_n_mult(a,n, m)
 end
 
 
-type tten{T<:Real}
+struct tten{T<:Real}
     core::Array{T}
     frames::Array{Array{T,2},1}
 
