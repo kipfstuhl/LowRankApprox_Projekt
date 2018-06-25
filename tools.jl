@@ -16,8 +16,8 @@ function get_rhs_sin(xi)
     rhs = Array{Float64,3}((n,n,n))
     for i in 1:n
         for j in 1:n
-            for k in 1:n
-                rhs[i,j,k] = sin(xi[i]+xi[j]+xi[k])
+            @simd for k in 1:n
+                @inbounds rhs[k,j,i] = sin(xi[k]+xi[j]+xi[i])
             end
         end
     end
@@ -29,8 +29,8 @@ function get_rhs_norm(xi)
     rhs = Array{Float64,3}((n,n,n))
     for i in 1:n
         for j in 1:n
-            for k in 1:n
-                rhs[i,j,k] = sqrt(xi[i]*xi[i] + xi[j]*xi[j] + xi[k]*xi[k])
+            @simd for k in 1:n
+                @inbounds rhs[k,j,i] = sqrt(xi[k]*xi[k] + xi[j]*xi[j] + xi[i]*xi[i])
             end
         end
     end
@@ -78,14 +78,15 @@ mode-n multiplication of tensor a with matrix m
 """
 function mode_n_mult(a,n, m)
     dims = size(a)
-    new_dims = [dims...]
+    # new_dims = [dims...]
+    new_dims = collect(dims)
     new_dims[n] = size(m,1)
     b = m*unfolding(a, n)
     folding(b,n,new_dims)
 end
 
 
-struct tten{T<:Real}
+struct tten{T<:AbstractFloat}
     core::Array{T}
     frames::Array{Array{T,2},1}
 
@@ -99,7 +100,8 @@ Higher Order Singular Value Decomposition
 """
 function hosvd(a, tol::T=1e-4) where {T<:AbstractFloat}
     d = ndims(a)
-    dims = [size(a)...]
+    # dims = [size(a)...]
+    dims = collect(size(a))
     tol = tol/sqrt(d) * norm(a[:],2)
     tol2 = tol*tol              # use the sqare for cheaper comparison
 
@@ -149,7 +151,8 @@ function hosvd2(a, ranks::Vector{T}) where {T<:Integer}
 end
 
 function hosvd2(a, ranks::Tuple{Vararg{T}}) where {T<:Integer}
-    rank_arr = [ranks...]
+    # rank_arr = [ranks...]
+    rank_arr = collect(ranks)
     hosvd(a, rank_arr)
 end
 
