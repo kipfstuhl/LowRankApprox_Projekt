@@ -4,8 +4,12 @@ module tools
 export unfolding, folding, mode_n_mult, tten, hosvd
 export get_xi, get_rhs_sin, get_rhs_norm, fullten
 
+
 """
-some definitions
+returns a vector xi of length n with entries
+```julia
+xi[i] = 1/(n+1)
+```
 """
 function get_xi(n)
     collect(1:n)/(n+1)
@@ -126,8 +130,13 @@ end
 
 """
 mode-n multiplication of tensor a with matrix m
+
+inputs
+a :  Array
+n :  mode for multiplication
+m :  matrix that gets multiplied with a in mode n
 """
-function mode_n_mult(a,n, m)
+function mode_n_mult(a, n, m)
     dims = size(a)
     # new_dims = [dims...]
     new_dims = collect(dims)
@@ -145,10 +154,12 @@ struct tten{T<:AbstractFloat}
     
 end
 
-a²
 
 """
-Higher Order Singular Value Decomposition
+Computes the Higher Order Singular Value Decomposition
+
+Returns a `tten` object. The tten is a tucker tensor consisting of a
+core tensor and an array of mode frames.
 """
 function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
     d = ndims(a)
@@ -167,7 +178,7 @@ function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
             if temp > ϵ²
                 # take the one satisfying the error bound, but stay
                 # within the bounds => check whether on bound or not
-                rᵢ = j==length(S)?j:(j+1)
+                rᵢ = j==length(S) ? j : (j+1)
                 break
             end
         end
