@@ -19,10 +19,10 @@ end
 function get_rhs_sin(xi::Array{Float64,1})
     n = length(xi)
     rhs = Array{Float64,3}((n,n,n))
-    for i in 1:n
+    @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
-                @inbounds rhs[k,j,i] = sin(xi[k]+xi[j]+xi[i])
+                rhs[k,j,i] = sin(xi[k]+xi[j]+xi[i])
             end
         end
     end
@@ -32,10 +32,10 @@ end
 function get_rhs_norm(xi)
     n = length(xi)
     rhs = Array{Float64,3}((n,n,n))
-    for i in 1:n
+    @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
-                @inbounds rhs[k,j,i] = sqrt(xi[k]*xi[k] + xi[j]*xi[j] + xi[i]*xi[i])
+                rhs[k,j,i] = sqrt(xi[k]*xi[k] + xi[j]*xi[j] + xi[i]*xi[i])
             end
         end
     end
