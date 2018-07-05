@@ -2,7 +2,7 @@
 module tools
 
 export unfolding, folding, mode_n_mult, tten, hosvd
-export get_xi, get_rhs_sin, get_rhs_norm
+export get_xi, get_rhs_sin, get_rhs_norm, fullten
 
 """
 some definitions
@@ -11,7 +11,12 @@ function get_xi(n)
     collect(1:n)/(n+1)
 end
 
-function get_rhs_sin(xi)
+function ξ(i, n)
+    i/(n+1)
+end
+
+
+function get_rhs_sin(xi::Array{Float64,1})
     n = length(xi)
     rhs = Array{Float64,3}((n,n,n))
     for i in 1:n
@@ -73,6 +78,7 @@ function folding(m, n, dims)
 end
 
 
+
 """
 mode-n multiplication of tensor a with matrix m
 """
@@ -95,34 +101,37 @@ struct tten{T<:AbstractFloat}
 end
 
 
+
 """
 Higher Order Singular Value Decomposition
 """
-function hosvd(a, tol::T=1e-4) where {T<:AbstractFloat}
+function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
     d = ndims(a)
     # dims = [size(a)...]
     dims = collect(size(a))
-    tol = tol/sqrt(d) * norm(a[:],2)
-    tol2 = tol*tol              # use the sqare for cheaper comparison
+    ϵ = ϵ/sqrt(d) * norm(a[:],2) # divide relative error equal to all dimensions
+    ϵ² = ϵ*ϵ                     # use the sqare for cheaper comparison
 
     frames = Array{Array{Float64,2},1}(d)
     for i in 1:d
         U,S,V = svd(unfolding(a,i))
-        r_i = 1
+        rᵢ = 1
         temp = 0.0
         for j in length(S):-1:1
             temp += S[j]*S[j]
-            if temp > tol2
-                r_i = j+1       # take the one satisfying the error bound
+            if temp > ϵ²
+                # take the one satisfying the error bound, but stay
+                # within the bounds
+                rᵢ = (j+1) % j
                 break
             end
         end
-        frames[i] = U[:, 1:r_i]
+        frames[i] = U[:, 1:rᵢ]
         #a = mode_n_mult(a,i,frames[i]')
         # use a more compact representation of the matrix
         # the implementation of mode_n_mult copys the data around
-        dims[i] = r_i
-        a = folding(diagm(S[1:r_i])*V[:,1:r_i]',i,dims); 
+        dims[i] = rᵢ
+        a = folding(diagm(S[1:rᵢ])*V[:,1:rᵢ]',i,dims); 
         gc()                    # garbage collection makes life easier
     end
 
@@ -187,10 +196,11 @@ end
 
 
 
-function fullten(a::tten)
+function fullten(a::tten{T}) where {T<:AbstractFloat}
     res = a.core
     for i in 1:length(a.frames)
         res = mode_n_mult(res, i, a.frames[i])
+        gc()
     end
     return res
 end
