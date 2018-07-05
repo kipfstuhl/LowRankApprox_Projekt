@@ -11,9 +11,14 @@ function get_xi(n)
     collect(1:n)/(n+1)
 end
 
-function ξ(i, n)
+
+@inline function ξ(i, n)
     i/(n+1)
 end
+
+# @inline function ξ(i)
+#     return i/(n+1)
+# end
 
 
 function get_rhs_sin(xi::Array{Float64,1})
@@ -29,7 +34,49 @@ function get_rhs_sin(xi::Array{Float64,1})
     return rhs
 end
 
-function get_rhs_norm(xi)
+function get_rhs_sin(n::Integer)
+    rhs = Array{Float64,3}((n,n,n))
+    @inbounds for i in 1:n
+        for j in 1:n
+            @simd for k in 1:n
+                rhs[k,j,i] = sin(ξ(k,n)+ξ(j,n)+ξ(i,n))
+            end
+        end
+    end
+    return rhs
+end
+
+"""
+this function retruns different values
+this is due to machine arithmetic and the optimisation
+"""
+function get_rhs_sin_opt(n::Integer)
+    rhs = Array{Float64,3}((n,n,n))
+    den::Float64 = 1.0/(n+1)
+    @inbounds for i in 1:n
+        for j in 1:n
+            @simd for k in 1:n
+                rhs[k,j,i] = sin((k+j+i)*den)
+            end
+        end
+    end
+    return rhs
+end
+
+
+function get_rhs_norm(n::Integer)
+    rhs = Array{Float64,3}((n,n,n))
+    @inbounds for i in 1:n
+        for j in 1:n
+            @simd for k in 1:n
+                rhs[k, j, i] = sqrt(ξ(k,n)*ξ(k,n)+ξ(j,n)*ξ(j,n)+ξ(i,n)*ξ(i,n))
+            end
+        end
+    end
+    return rhs
+end
+
+function get_rhs_norm(xi::Array{Float64,1})
     n = length(xi)
     rhs = Array{Float64,3}((n,n,n))
     @inbounds for i in 1:n
@@ -43,14 +90,12 @@ function get_rhs_norm(xi)
 end
 
 function approx_sin(n)
-    xi = get_xi(n)
-    rhs = get_rhs_sin(xi)
+    rhs = get_rhs_sin(n)
     hosvd(rhs, 1e-4)
 end
 
 function approx_norm(n)
-    xi = get_xi(n)
-    rhs = get_rhs_norm(xi)
+    rhs = get_rhs_norm(n)
     hosvd(rhs, 1e-4)
 end
 
@@ -100,7 +145,7 @@ struct tten{T<:AbstractFloat}
     
 end
 
-
+a²
 
 """
 Higher Order Singular Value Decomposition
@@ -121,8 +166,8 @@ function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
             temp += S[j]*S[j]
             if temp > ϵ²
                 # take the one satisfying the error bound, but stay
-                # within the bounds
-                rᵢ = (j+1) % j
+                # within the bounds => check whether on bound or not
+                rᵢ = j==length(S)?j:(j+1)
                 break
             end
         end
