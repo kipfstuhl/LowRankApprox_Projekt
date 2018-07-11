@@ -51,11 +51,11 @@ function get_rhs_sin(n::Integer)
     return rhs
 end
 
-"""
-this function retruns different values
-this is due to machine arithmetic and the optimisation
-"""
+
 function get_rhs_sin_opt(n::Integer)
+    # this function retruns different values
+    # this is due to machine arithmetic and
+    # the precomputation of the denominator
     rhs = Array{Float64,3}((n,n,n))
     den::Float64 = 1.0/(n+1)
     @inbounds for i in 1:n
@@ -113,7 +113,6 @@ function unfolding(a, n)
     dims = size(a)
     indices = setdiff(1:ndims(a),n)
     reshape(permutedims(a,[n;indices]),dims[n],prod(dims[indices]))
-    #reshape(PermutedDimsArray(a,[n;indices]),dims[n],prod(dims[indices]))
 end
 
 """
@@ -124,7 +123,6 @@ function folding(m, n, dims)
     indices = setdiff(1:length(dims), n)
     a = reshape(m, (dims[n],dims[indices]...))
     permutedims(a,invperm([n;indices]))
-    #PermutedDimsArray(a,invperm([n;indices]))
 end
 
 
@@ -132,10 +130,10 @@ end
 """
 mode-n multiplication of tensor a with matrix m
 
-inputs
-a :  Array
-n :  mode for multiplication
-m :  matrix that gets multiplied with a in mode n
+# inputs
+- a :  Array
+- n :  mode for multiplication
+- m :  matrix that gets multiplied with a in mode n
 """
 function mode_n_mult(a, n, m)
     dims = size(a)
@@ -146,21 +144,34 @@ function mode_n_mult(a, n, m)
     folding(b,n,new_dims)
 end
 
-
+"""
+Type for Tucker tensor
+core:   Array, this is the core tensor of size (r₁, r₂, r₃, ...)
+frames: Array of Arrays, these are the mode frames
+"""
 struct tten{T<:AbstractFloat}
     core::Array{T}
     frames::Array{Array{T,2},1}
-
-    
     
 end
 
 
 """
+    hosvd(a, ϵ)
+
 Computes the Higher Order Singular Value Decomposition
 
+The computation is done via sequentially truncated HOSVD, this is much faster,
+as the tensor gets compressed early.
 Returns a `tten` object. The tten is a tucker tensor consisting of a
 core tensor and an array of mode frames.
+
+input:
+- a: full tensor
+- ϵ: relative error bound
+
+output:
+- `tten` object representing the Tucker approximation
 """
 function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
     d = ndims(a)
@@ -185,11 +196,14 @@ function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
         end
         frames[i] = U[:, 1:rᵢ]
         #a = mode_n_mult(a,i,frames[i]')
-        # use a more compact representation of the matrix
-        # the implementation of mode_n_mult copys the data around
+        # use a more compact representation of the remaining matrix
+        # the implementation of mode_n_mult copys the data around more than once
+        # this works as the remainder S*V is just the same as
+        # U'*A = U'*U*A*V', as U is orthogonal
         dims[i] = rᵢ
         a = folding(diagm(S[1:rᵢ])*V[:,1:rᵢ]',i,dims); 
-        gc()                    # garbage collection makes life easier
+        # garbage collection makes life easier and code faster
+        gc()
     end
 
     return tten(a,frames)
