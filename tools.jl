@@ -6,12 +6,13 @@ export get_xi, get_rhs_sin, get_rhs_norm, fullten
 
 
 """
+    get_xi(n::Integer)
 returns a vector xi of length n with entries
 ```julia
 xi[i] = 1/(n+1)
 ```
 """
-function get_xi(n)
+function get_xi(n::Integer)
     collect(1:n)/(n+1)
 end
 
