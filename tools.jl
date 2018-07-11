@@ -173,7 +173,7 @@ input:
 output:
 - `tten` object representing the Tucker approximation
 """
-function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
+function hosvd(a, ϵ::T=1e-4, sv::Bool=false) where {T<:AbstractFloat}
     d = ndims(a)
     # dims = [size(a)...]
     dims = collect(size(a))
@@ -181,6 +181,9 @@ function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
     ϵ² = ϵ*ϵ                     # use the sqare for cheaper comparison
 
     frames = Array{Array{Float64,2},1}(d)
+    if sv
+        svs = Array{Array{Float64,1},1}(d)
+    end
     for i in 1:d
         U,S,V = svd(unfolding(a,i))
         rᵢ = 1
@@ -201,12 +204,18 @@ function hosvd(a, ϵ::T=1e-4) where {T<:AbstractFloat}
         # this works as the remainder S*V is just the same as
         # U'*A = U'*U*A*V', as U is orthogonal
         dims[i] = rᵢ
-        a = folding(diagm(S[1:rᵢ])*V[:,1:rᵢ]',i,dims); 
+        a = folding(diagm(S[1:rᵢ])*V[:,1:rᵢ]',i,dims);
+        if sv
+            svs[i] = S
+        end
         # garbage collection makes life easier and code faster
         gc()
     end
-
-    return tten(a,frames)
+    if sv
+        return tten(a,frames), svs
+    else
+        return tten(a,frames)
+    end
 end
 
 
