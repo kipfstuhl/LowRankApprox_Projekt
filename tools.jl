@@ -3,6 +3,39 @@ module tools
 
 export unfolding, folding, mode_n_mult, tten, hosvd
 export get_xi, get_rhs_sin, get_rhs_norm, fullten
+export rhs_sin, rhs_norm
+
+
+
+#### New interface for right-hand side
+# This can be used more like functions.
+# For any other function on the right hand side,
+# just make a non-abstract subtype of rhs and
+# implement the desired function as a callable.
+
+
+abstract type rhs end
+
+struct rhs_sin <: rhs
+    n::Integer
+    den::Float64
+    rhs_sin(n::Integer) = new(n, 1/(n+1))
+end
+
+function (r::rhs_sin)(i,j,k)
+    sin((i+j+k)*r.den)
+end
+
+
+struct rhs_norm <: rhs
+    n::Integer
+    den::Float64
+    rhs_norm(n::Integer) = new(n, 1/(n+1))
+end
+
+function (r::rhs_norm)(i,j,k)
+    sqrt( (i*r.den)^2 + (j*r.den)^2 + (k*r.den)^2)
+end
 
 
 """
