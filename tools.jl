@@ -339,5 +339,110 @@ function fullten(a::tten{T}) where {T<:AbstractFloat}
     return res
 end
 
+
+
+"""
+    aca(a, ϵ)
+
+Computes adaptive cross approximation of matrix a with relative accuracy ϵ.
+
+This implementation uses partial pivoting, this implies the array has
+to be evaluated along a row or column. For the computation not the
+whole array is needed.
+
+"""
+function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
+    Rk = a
+    maxrk = min(size(a)...)
+    I = Int[]
+    J = Int[]
+    k = 1
+    i = 1
+    normk2 = 0.0
+    us = []
+    vs = []
+    # use ↓ this crappy construct to simulate a do-while-loop
+    while true
+        # maxval is not really used here but comes for free in mymax
+        # function
+        maxval,j = mymax(abs.(Rk[i,:]),J)
+
+        # reorder execution compared to algorith from lecture
+        # now this is not really important anymore, but it does not
+        # matter where this is done. For an early (not working)
+        # version this was important
+        append!(I, i)
+        append!(J, j)
+
+        δ = Rk[i,j]
+        if abs(δ) < 2eps()
+            # not low rank approx anymore ...
+            if length(I) == maxrk - 1
+                println("Return early")
+                println("maxrk: ", maxrk)
+                println("δ:     ", δ)
+                println("i: ",i," j: ",j)
+                return sort!(I),sort!(J)
+            end
+        else
+            uk = Rk[:,j]
+            vk = Rk[i,:]'/δ
+            Rk = Rk - uk*vk
+            k = k + 1
+
+            # stopping criterion
+            # calculate the parts seperately first interactions of uk,
+            # vk with old u and v then the sqared norm, at the end add
+            # everything up need the old vectors stored for updates
+            push!(us, uk)
+            push!(vs, vk)
+            temp = 0
+            # k-2 due to early incrementation of k
+            for l in 1:k-2
+                temp += uk'*us[l] * vs[l]*vk'
+            end
+            #                         ↓ sqared norms
+            normk2 = normk2 + 2temp + (uk'*uk)*(vk*vk')
+
+            # check for stopping criterion
+            # also if it is not fulfulled check for high rank if rank
+            # gets too high just return silently and don't complain
+            # after all this is for _low rank_ approximation
+            ### maybe it is a good idea to add some special warning or
+            ### throw an error if rank exceeds the bounds
+            if uk'*uk * vk*vk' <= ϵ*normk2 || k==maxrk
+                return sort!(I),sort!(J)
+            end
+        end                     # if abs(δ)<2eps()
+        maxval, i = mymax(abs.(uk), I)
+    end
+end
+
+"""
+    mymax(v, I) -> max,i
+
+Computes the maximal value and the index of v, where i ∉ I. I is some
+indexset, every element of I is a valid index for v. (The
+implementation assumes that at least the minimal index of I is valid.)
+"""
+function mymax(v, I)
+    tmp = v[1]
+    indices = setdiff(1:length(v),I)
+    ret = min(indices...)
+    for i ∈ indices
+        if v[i] > tmp
+            tmp = v[i]
+            ret = i
+        end
+    end
+    return tmp, ret
+end
+
+        
+
+
+
+
+
 end
 
