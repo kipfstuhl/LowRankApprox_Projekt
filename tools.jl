@@ -17,35 +17,46 @@ export rhs_sin, rhs_norm
 abstract type rhs end
 
 struct rhs_sin <: rhs
-    n::Integer
+    n::Int
     den::Float64
-    rhs_sin(n::Integer) = new(n, 1/(n+1))
+    rhs_sin(n::Int) = new(n, 1/(n+1))
 end
 
-function (r::rhs_sin)(i,j,k)
+function (r::rhs_sin)(i::Int,j::Int,k::Int)
     sin((i+j+k)*r.den)
 end
 
 
 struct rhs_norm <: rhs
-    n::Integer
+    n::Int
     den::Float64
-    rhs_norm(n::Integer) = new(n, 1/(n+1))
+    rhs_norm(n::Int) = new(n, 1/(n+1))
 end
 
-function (r::rhs_norm)(i,j,k)
+function (r::rhs_norm)(i::Int,j::Int,k::Int)
     sqrt( (i*r.den)^2 + (j*r.den)^2 + (k*r.den)^2)
 end
 
 
+function Base.getindex(r::rhs, i::Int, j::Int, k::Int)
+    # cheap boundscheck, note this does not use the Julia convetnions
+    # of bounds checking with several nested function calls
+    # check may be removed for better performance
+    correct = 1<=i<=r.n && 1<=j<=r.n && 1<=k<=r.n
+    if ~correct
+        throw(BoundsError(r,(i,j,k)))
+    end
+    return r(i,j,k)
+end
+
 """
-    get_xi(n::Integer)
+    get_xi(n::Int)
 returns a vector xi of length n with entries
 ```julia
 xi[i] = 1/(n+1)
 ```
 """
-function get_xi(n::Integer)
+function get_xi(n::Int)
     collect(1:n)/(n+1)
 end
 
@@ -72,7 +83,7 @@ function get_rhs_sin(xi::Array{Float64,1})
     return rhs
 end
 
-function get_rhs_sin(n::Integer)
+function get_rhs_sin(n::Int)
     rhs = Array{Float64,3}((n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
@@ -85,7 +96,7 @@ function get_rhs_sin(n::Integer)
 end
 
 
-function get_rhs_sin_opt(n::Integer)
+function get_rhs_sin_opt(n::Int)
     # this function retruns different values
     # this is due to machine arithmetic and
     # the precomputation of the denominator
@@ -102,7 +113,7 @@ function get_rhs_sin_opt(n::Integer)
 end
 
 
-function get_rhs_norm(n::Integer)
+function get_rhs_norm(n::Int)
     rhs = Array{Float64,3}((n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
@@ -255,7 +266,7 @@ end
 # the hosvd2 functions are worse because they reduce the core at the
 # end when done during the first loop, simultaneous to svd's, it
 # reduces the size and thus cost much
-function hosvd2(a, ranks::Vector{T}) where {T<:Integer}
+function hosvd2(a, ranks::Vector{T}) where {T<:Int}
     d = ndims(a)
     @assert(d==length(ranks), "dimension mismatch")
 
@@ -272,7 +283,7 @@ function hosvd2(a, ranks::Vector{T}) where {T<:Integer}
     
 end
 
-function hosvd2(a, ranks::Tuple{Vararg{T}}) where {T<:Integer}
+function hosvd2(a, ranks::Tuple{Vararg{T}}) where {T<:Int}
     # rank_arr = [ranks...]
     rank_arr = collect(ranks)
     hosvd(a, rank_arr)
