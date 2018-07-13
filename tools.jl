@@ -13,6 +13,14 @@ export rhs_sin, rhs_norm
 # just make a non-abstract subtype of rhs and
 # implement the desired function as a callable.
 
+# The functions (r::T)(i,j,k) where T <: rhs is some subtype of rhs
+# make the objects callable, i.e. one can write
+# > r = rhs_sin(100)
+# > r(1,35,83)
+# this makes the code very convenient.  The Base.getindex
+# implementation for rhs is for a more natural indexign via
+# > r[1,35,83]
+# which returns the same value as the call above.
 
 abstract type rhs end
 
@@ -23,6 +31,8 @@ struct rhs_sin <: rhs
 end
 
 function (r::rhs_sin)(i::Int,j::Int,k::Int)
+    # multiplication with reciprocal denominator is much faster than
+    # division
     sin((i+j+k)*r.den)
 end
 
@@ -39,7 +49,7 @@ end
 
 
 function Base.getindex(r::rhs, i::Int, j::Int, k::Int)
-    # cheap boundscheck, note this does not use the Julia convetnions
+    # cheap boundscheck; note this does not use the Julia convetnions
     # of bounds checking with several nested function calls
     # check may be removed for better performance
     correct = 1<=i<=r.n && 1<=j<=r.n && 1<=k<=r.n
