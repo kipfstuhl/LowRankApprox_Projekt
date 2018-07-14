@@ -59,6 +59,54 @@ function Base.getindex(r::rhs, i::Int, j::Int, k::Int)
     return r(i,j,k)
 end
 
+
+"""
+    unfolding_fun(a, n, dims) -> a_u(i,j)
+
+Returns a function for evaluating the unfolding (matricisation,
+flattening) of a tensor that is given only via a function.
+
+"""
+function unfolding_fun(a, n, dims)
+    # this is just for getting the first index after permutation, it
+    # is assumed that the rank of the tensors is not huge
+    temp = dims[1:end .!= n]
+    ind = temp[1]
+
+    # here one-based indexing is a PITA. Maybe this can be done
+    # easier, but at least this works. It has been tested with the
+    # array based version.
+    if n == 1
+        ret = :( (i,j) ->
+                 if rem(j,$ind)==0
+                 a(i,$ind,div(j,$ind))
+                 else
+                 a(i,rem(j,$ind),1+div(j,$ind))
+                 end
+                 )
+    elseif n == 2
+        ret = :( (i,j) ->
+                 if rem(j,$ind)==0
+                 a($ind,i,div(j,$ind))
+                 else
+                 a(rem(j,$ind),i,1+div(j,$ind))
+                 end
+                 )
+    elseif n==3
+        ret = :( (i,j) ->
+                 if rem(j,$ind)==0
+                 a($ind,div(j,$ind),i)
+                 else
+                 a(rem(j,$ind),1+div(j,$ind),i)
+                 end
+                 )
+    end
+    # Show(ret)                   # for seeing what substitutions are made
+    return eval(ret)
+end
+
+
+
 """
     get_xi(n::Int)
 returns a vector xi of length n with entries
@@ -416,6 +464,9 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
     end
 end
 
+
+
+
 """
     mymax(v, I) -> max,i
 
@@ -436,7 +487,7 @@ function mymax(v, I)
     return tmp, ret
 end
 
-        
+
 """
    cur(a, i, j) -> C,U,R
 
