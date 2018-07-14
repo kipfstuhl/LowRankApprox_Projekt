@@ -60,6 +60,15 @@ function Base.getindex(r::rhs, i::Int, j::Int, k::Int)
 end
 
 
+# alternative to getindex for callables This makes arrayindexing with
+# Fortran syntax possible, i.e. a(i,j,k)
+#### use with care!!
+#### uncomment only if you know what you do
+# function (a::Array)(i::Int...)
+#     a[i...]
+# end
+
+
 """
     unfolding_fun(a, n, dims) -> a_u(i,j)
 
