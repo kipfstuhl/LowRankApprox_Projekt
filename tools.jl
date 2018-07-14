@@ -378,10 +378,8 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
         if abs(δ) < 2eps()
             # not low rank approx anymore ...
             if length(I) == maxrk - 1
-                println("Return early")
-                println("maxrk: ", maxrk)
-                println("δ:     ", δ)
-                println("i: ",i," j: ",j)
+                # if this happens, no proper LRA has been calculated
+                warn("Return early")
                 return sort!(I),sort!(J)
             end
         else
@@ -439,8 +437,15 @@ function mymax(v, I)
 end
 
         
+"""
+   cur(a, i, j) -> C,U,R
 
-
+Compute the CUR approximation given the original matrix a and the
+indiex sets i and j.
+"""
+function cur(a, i, j)
+    return a[:,j], inv(a[i,j]), a[i,:]
+end
 
 
 
