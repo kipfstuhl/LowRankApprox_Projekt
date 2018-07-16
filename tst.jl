@@ -21,9 +21,24 @@ using Base.Test
         @test a == folding(unfolding(a,2),2,size(a))
         @test a == folding(unfolding(a,3),3,size(a))
         
-    end;
+    end
 
+    @testset "Matricisation of function, mode $n"for n in 1:3
+        # the unfolding for arrays is assumed to work now, as it
+        # passed the tests earlier
+        dims = (10,10,10);
+        a = rhs_sin(10);
+        b = get_rhs_sin(10);
+        
+        b_u = unfolding(b, n);
+        a_u = unfolding_fun(a, n, dims);
+        
+        a_u_arr = [a_u(i,j) for i=1:dims[1],j=1:prod(dims[1:end .!= n])];
+        
+        @test a_u_arr ≈ b_u
+    end
 
+    
     @testset "HOSVD" begin
         # set the random number generator to a defined state for
         # reproducibility
@@ -35,5 +50,8 @@ using Base.Test
         # for the comparison need to multiply ϵ with norm of b, as the error
         # in this hosvd implementation is relative
         @test norm((fullten(c)-b)[:],2) <= ϵ * norm(b[:],2)
-    end;
+
+        # use the built in isapprox function, it chooses a default tolerance
+        @test fullten(c) ≈ b
+    end
 end;

@@ -76,20 +76,20 @@ Returns a function for evaluating the unfolding (matricisation,
 flattening) of a tensor that is given only via a function.
 
 """
-function unfolding_fun(a, n, dims)
+function unfolding_fun_expr(a, n, dims)
     # this is just for getting the first index after permutation, it
     # is assumed that the rank of the tensors is not huge
     # This is a bit easy here, because I assume tensors of fixed order
     # 3 only. Then products just vanish.
     temp = dims[1:end .!= n]
-    ind = temp[1]
+    ind = Tuple(temp)
 
     # here one-based indexing is a PITA. Maybe this can be done
     # easier, but at least this works. It has been tested with the
     # array based version.
     if n == 1
         ret = :( (i,j) ->
-                 a(i, ind2sub(($ind,$ind),j)...)
+                 a(i, ind2sub($ind,j)...)
                  # if rem(j,$ind)==0
                  # a(i,$ind,div(j,$ind))
                  # else
@@ -98,7 +98,7 @@ function unfolding_fun(a, n, dims)
                  )
     elseif n == 2
         ret = :( (i,j) ->
-                 a(ind2sub(($ind,$ind),j)[1],i,ind2sub(($ind,$ind),j)[2])
+                 a(ind2sub($ind,j)[1],i,ind2sub($ind,j)[2])
                  # if rem(j,$ind)==0
                  # a($ind,i,div(j,$ind))
                  # else
@@ -107,7 +107,7 @@ function unfolding_fun(a, n, dims)
                  )
     elseif n==3
         ret = :( (i,j) ->
-                 a(ind2sub(($ind,$ind),j)...,i)
+                 a(ind2sub($ind,j)...,i)
                  # if rem(j,$ind)==0
                  # a($ind,div(j,$ind),i)
                  # else
@@ -115,10 +115,13 @@ function unfolding_fun(a, n, dims)
                  # end
                  )
     end
-    # Show(ret)                   # for seeing what substitutions are made
-    return eval(ret)
+    # show(ret)                   # for seeing what substitutions are made
+    return ret
 end
 
+function unfolding_fun(a, n, dims)
+    return eval(unfolding_fun_expr(a, n, dims))
+end
 
 
 """
