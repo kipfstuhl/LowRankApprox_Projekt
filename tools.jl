@@ -430,8 +430,9 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
     while true
         # maxval is not really used here but comes for free in mymax
         # function
-        maxval,j = mymax(abs.(Rk[i,:]),J)
-
+        # maxval,j = mymax(abs.(Rk[i,:]),J)
+        # use better pivoting compared to pseudo-alg from lecture
+        i,j = find_pivot(Rk, i, I, J)
         # reorder execution compared to algorith from lecture
         # now this is not really important anymore, but it does not
         # matter where this is done. For an early (not working)
@@ -441,10 +442,13 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
 
         δ = Rk[i,j]
         if abs(δ) < 2eps()
+            if abs(δ) == 0
+                return sort!(I),sort!(J)
+            end
             # not low rank approx anymore ...
             if length(I) == maxrk - 1
                 # if this happens, no proper LRA has been calculated
-                warn("Return early")
+                warn("Return with maximal rank => no Low Rank Approximation")
                 return sort!(I),sort!(J)
             end
         else
@@ -477,11 +481,21 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
                 return sort!(I),sort!(J)
             end
         end                     # if abs(δ)<2eps()
-        maxval, i = mymax(abs.(uk), I)
+        # needed when directly implementing pseudo-algo from lecture
+        # that is not the best choice
+        # maxval, i = mymax(abs.(uk), I)
     end
 end
 
 
+function find_pivot(a, i, I, J)
+    j = 1
+    for n = 1:3
+        maxval, j = mymax(abs.(a[i,:]), J)
+        maxval, i = mymax(abs.(a[:,j]), I)
+    end
+    return i,j
+end
 
 
 """
