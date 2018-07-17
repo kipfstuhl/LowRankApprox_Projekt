@@ -89,7 +89,7 @@ function unfolding_fun_expr(a, n, dims)
     # array based version.
     if n == 1
         ret = :( (i,j) ->
-                 a(i, ind2sub($ind,j)...)
+                 $a(i, ind2sub($ind,j)...)
                  # if rem(j,$ind)==0
                  # a(i,$ind,div(j,$ind))
                  # else
@@ -98,7 +98,7 @@ function unfolding_fun_expr(a, n, dims)
                  )
     elseif n == 2
         ret = :( (i,j) ->
-                 a(ind2sub($ind,j)[1],i,ind2sub($ind,j)[2])
+                 $a(ind2sub($ind,j)[1],i,ind2sub($ind,j)[2])
                  # if rem(j,$ind)==0
                  # a($ind,i,div(j,$ind))
                  # else
@@ -107,7 +107,7 @@ function unfolding_fun_expr(a, n, dims)
                  )
     elseif n==3
         ret = :( (i,j) ->
-                 a(ind2sub($ind,j)...,i)
+                 $a(ind2sub($ind,j)...,i)
                  # if rem(j,$ind)==0
                  # a($ind,div(j,$ind),i)
                  # else
