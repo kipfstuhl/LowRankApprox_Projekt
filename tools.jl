@@ -421,11 +421,15 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
     maxrk = min(size(a)...)
     I = Int[]
     J = Int[]
+    I_good = Int[]
+    J_good = Int[]
     k = 1
     i = 1
+    i = 70
     normk2 = 0.0
     us = []
     vs = []
+    ϵ = ϵ*ϵ
     # use ↓ this crappy construct to simulate a do-while-loop
     while true
         # maxval is not really used here but comes for free in mymax
@@ -441,28 +445,42 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
         append!(J, j)
 
         δ = Rk[i,j]
-        if abs(δ) < 2eps()
-            if abs(δ) == 0
-                return sort!(I),sort!(J)
-            end
-            # not low rank approx anymore ...
+        # improve the error here. ϵ is maybe not optimal, as it is
+        # just the sqared error bound for the overall
+        # approximation. This just works for the tested cases.
+        if abs(δ) < ϵ
             if length(I) == maxrk - 1
                 # if this happens, no proper LRA has been calculated
                 warn("Return with maximal rank => no Low Rank Approximation")
-                return sort!(I),sort!(J)
+                return I_good,J_good
+            end
+
+            # try again, if still bad exit
+            # note: this is a trade off between accuracy and speed.
+            # It may happen, that there are still good candidates, but
+            # those cannot be reached with the search used for the
+            # pivot elements.
+            i,j = find_pivot(Rk, i, I, J)
+            δ = Rk[i,j]
+            if abs(δ) < ϵ
+                warn("Could not find good pivot anymore.")
+                return I_good,J_good
             end
         else
             uk = Rk[:,j]
             vk = Rk[i,:]'/δ
             Rk = Rk - uk*vk
             k = k + 1
-
-            # stopping criterion
-            # calculate the parts seperately first interactions of uk,
-            # vk with old u and v then the sqared norm, at the end add
-            # everything up need the old vectors stored for updates
+            # use only the indices that contribute
+            append!(I_good, i)
+            append!(J_good, j)
             push!(us, uk)
             push!(vs, vk)
+
+            # stopping criterion
+            # calculate the parts seperately
+            # first interactions of uk, vk with old u and v then the
+            # sqared norm, at the end add everything up
             temp = 0
             # k-2 due to early incrementation of k
             for l in 1:k-2
@@ -472,15 +490,20 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
             normk2 = normk2 + 2temp + (uk'*uk)*(vk*vk')
 
             # check for stopping criterion
-            # also if it is not fulfulled check for high rank if rank
+            # also if it is not fulfilled check for high rank, if rank
             # gets too high just return silently and don't complain
-            # after all this is for _low rank_ approximation
             ### maybe it is a good idea to add some special warning or
-            ### throw an error if rank exceeds the bounds
+            ### throw an error if rank exceeds the bounds, after all
+            ### this is for _low rank_ approximation
             if uk'*uk * vk*vk' <= ϵ*normk2 || k==maxrk
-                return sort!(I),sort!(J)
+                return I_good,J_good
             end
-        end                     # if abs(δ)<2eps()
+        end
+        # if abs(δ)<2eps() does not make a
+        # difference, if uk and vk are not updated, the error estimate
+        # remains the same. So this can be checked in the else
+        # statement
+        
         # needed when directly implementing pseudo-algo from lecture
         # that is not the best choice
         # maxval, i = mymax(abs.(uk), I)
@@ -488,9 +511,9 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
 end
 
 
-function find_pivot(a, i, I, J)
+function find_pivot(a, i, I, J, n::Int=3)
     j = 1
-    for n = 1:3
+    for l = 1:n
         maxval, j = mymax(abs.(a[i,:]), J)
         maxval, i = mymax(abs.(a[:,j]), I)
     end
@@ -506,9 +529,18 @@ indexset, every element of I is a valid index for v. (The
 implementation assumes that at least the minimal index of I is valid.)
 """
 function mymax(v, I)
-    tmp = v[1]
     indices = setdiff(1:length(v),I)
-    ret = min(indices...)
+    ind = min(indices...)
+    maxval = v[ind]
+    for i ∈ indices
+        if v[i] > maxval
+            maxval = v[i]
+            ind = i
+        end
+    end
+    return maxval, ind
+end
+
     for i ∈ indices
         if v[i] > tmp
             tmp = v[i]

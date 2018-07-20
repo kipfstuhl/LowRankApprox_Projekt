@@ -23,7 +23,7 @@ using Base.Test
         
     end
 
-    @testset "Matricisation of function, mode $n"for n in 1:3
+    @testset "Matricisation of function, mode $n" for n in 1:3
         # the unfolding for arrays is assumed to work now, as it
         # passed the tests earlier
         dims = (10,10,10);
