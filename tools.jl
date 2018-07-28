@@ -5,6 +5,7 @@ export unfolding, folding, mode_n_mult, tten, hosvd
 export get_xi, get_rhs_sin, get_rhs_norm, fullten
 export rhs_sin, rhs_norm
 
+export unfolding_fun, aca_fun
 
 
 #### New interface for right-hand side
@@ -541,14 +542,175 @@ function mymax(v, I)
     return maxval, ind
 end
 
-    for i ∈ indices
-        if v[i] > tmp
-            tmp = v[i]
-            ret = i
+
+
+
+
+
+
+
+
+function aca_fun(a, dims, ϵ::Float64=1e-4)
+    #R = Array{Any,1}([a])
+    # R = []
+    # push!(R, a)
+    Rk = a
+    maxrk = min(dims...)
+    I = Int[]
+    J = Int[]
+    I_good = Int[]
+    J_good = Int[]
+    k = 1
+    i = 1
+    normk2 = 0.0
+    us = []
+    vs = []
+
+    while true
+        # i,j = find_pivot_fun(R[k], dims, i, I, J)
+        i,j = find_pivot_fun(Rk, dims, i, I, J)
+        append!(I, i)
+        append!(J, j)
+
+        # δ = R[k](i,j)
+        δ = Rk(i,j)
+        if abs(δ) < 10eps()
+            # if abs(δ) == 0
+            #     return sort!(I),sort!(J)
+            # end
+            if length(I) == maxrk-1
+                warn("Return with maximal rank")
+                return sort!(I_good), sort!(J_good)
+            end
+        else
+            # uk = (ii)->R[k](ii,j)
+            # vk = (jj)->R[k](i,jj)/δ
+            uk = (ii)->Rk(ii,j)
+            vk = (jj)->Rk(i,jj)
+            push!(us, uk)
+            push!(vs, vk)
+
+            # FIX: calculate the whole function in every step
+            # this costs a loop of length k in each step
+            # push!(R, (ii,jj)->R[k](ii,jj)-uk(ii)*vk(jj) )
+            # Rk = update_rk(Rk, uk, vk)
+            Rk = update_rk(a, us, vs)
+            k = k+1
+
+            # use only the indices that contribute to the solution
+            append!(I_good, i)
+            append!(J_good, j)
+
+            temp = 0.0
+            for l in 1:k-2
+                # temp += prod(map( ii->uk(ii)*us[l](ii), 1:dims[1])) *
+                #     prod(map( jj->ns[l](jj)*vk(jj), 1:dims[2]))
+                # use the handy |> piping syntax
+                temp += (1:dims[1] .|> ii->uk(ii)us[l](ii) |> prod) *
+                    (1:dims[2] .|> jj->ns[l](jj)*vk(jj) |> prod)
+            end
+
+            # calculate product of sqared norms
+            # sqnormprod = prod(map( ii->uk(ii)*uk(ii), 1:dims[1])) * prod(map( jj->vk(jj)*vk(jj), 1:dims[2]))
+            sqnormprod = prod(1:dims[1] .|> ii->uk(ii)*uk(ii)) * prod(1:dims[2] .|> jj->vk(jj)*vk(jj))
+            normk2 = normk2 + 2temp + sqnormprod
+            
+            if sqnormprod <= ϵ*normk2 || k==maxrk
+                return sort!(I_good), sort!(J_good)
+            end
+        end
+
+    end
+end
+
+
+"""
+    update_rk(r, u, v) -> r
+
+takes a function r(i,j), arrays of function u, v and returns fucntion calculating
+r(i,j)-u[:](i)*v[:](j) (that is, summing all products of u and v)
+"""
+function update_rk(r, u, v)
+    function rk(i,j)
+        temp = r(i,j)
+        for l ∈ length(u)
+            temp -= u[l](i)*v[l](j)
+        end
+        temp
+    end
+    return rk
+end
+
+function update_rk_new(a, n, I, J)
+    # check this again! Not sure this works
+    #
+    # Idea: compute s = inv(a(I,J))
+    # then compute a - u*s*v'
+    # for the last computation use only the rows and columns that are
+    # required
+
+    s = zeros(length(I),length(J))
+    for j ∈ J
+        for i ∈ I
+            s[i,j] = a(i,j)
         end
     end
-    return tmp, ret
+    s = inv(s)
+
+    function u(ii)
+        # check sizes!
+        ret = zeros(n)
+        for j ∈ 1:n
+            ret[j] = a(ii,j)
+        end
+        return ret
+    end
+
+    function v(jj)
+        ret = zeros(length(I))
+        for i ∈ I
+            ret[i] = a(i,jj)
+        end
+        return ret
+    end
+
+    function rk(ii,jj)
+
+    end
+
+    return rk
 end
+
+
+function find_pivot_fun(a, dims, i, I, J)
+    j = 1
+    for n = 1:3
+        maxval, j = mymax_fun( jj-> abs(a(i,jj)), dims[2], J)
+        maxval, i = mymax_fun( ii-> abs(a(ii,j)), dims[1], I)
+    end
+    return i,j
+end
+
+
+"""
+    mymax_fun(v, n, I)
+
+return maximum value of function v and index ∈ {1...n}∖I
+"""
+function mymax_fun(v, n, I)
+    indices = setdiff(1:n, I)
+    ind = min(indices...)
+    maxval = v(ind)
+    for i ∈ indices
+        if v(i) > maxval
+            maxval = v(i)
+            ind = i
+        end
+    end
+    return maxval, ind
+end
+
+
 
 
 """
