@@ -456,11 +456,12 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
                 return I_good,J_good
             end
 
-            # try again, if still bad exit
-            # note: this is a trade off between accuracy and speed.
+            # try again, if still bad exit note: this is a trade off
+            # between accuracy and speed.
             # It may happen, that there are still good candidates, but
             # those cannot be reached with the search used for the
-            # pivot elements.
+            # pivot elements. E.g. for block diagonal matrices this
+            # easily happens.
             i,j = find_pivot(Rk, i, I, J)
             δ = Rk[i,j]
             if abs(δ) < ϵ
@@ -594,7 +595,10 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
             # this costs a loop of length k in each step
             # push!(R, (ii,jj)->R[k](ii,jj)-uk(ii)*vk(jj) )
             # Rk = update_rk(Rk, uk, vk)
-            Rk = update_rk(a, us, vs)
+            # Rk = update_rk(a, us, vs)
+            println("I: ",I)
+            println("J: ",J)
+            Rk = update_rk_new(a, I, J)
             k = k+1
 
             # use only the indices that contribute to the solution
@@ -624,64 +628,81 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
 end
 
 
-"""
-    update_rk(r, u, v) -> r
+# """
+#     update_rk(r, u, v) -> r
 
-takes a function r(i,j), arrays of function u, v and returns fucntion calculating
-r(i,j)-u[:](i)*v[:](j) (that is, summing all products of u and v)
-"""
-function update_rk(r, u, v)
-    function rk(i,j)
-        temp = r(i,j)
-        for l ∈ length(u)
-            temp -= u[l](i)*v[l](j)
-        end
-        temp
-    end
-    return rk
-end
+# takes a function r(i,j), arrays of function u, v and returns fucntion calculating
+# r(i,j)-u[:](i)*v[:](j) (that is, summing all products of u and v)
+# """
+# function update_rk(r, u, v)
+#     function rk(i,j)
+#         temp = r(i,j)
+#         for l ∈ length(u)
+#             temp -= u[l](i)*v[l](j)
+#         end
+#         temp
+#     end
+#     return rk
+# end
 
-function update_rk_new(a, n, I, J)
+"""
+    update_rk(a, I, J) -> r
+
+takes a function a(i,j), arrays if indices I, J and returns function
+calculating the residual a - u*s*v'. Where u are columns J of a, v are
+rows I of a, and s is inverse of a(I,J).
+"""
+function update_rk(a, I, J)
     # check this again! Not sure this works
     #
     # Idea: compute s = inv(a(I,J))
     # then compute a - u*s*v'
     # for the last computation use only the rows and columns that are
     # required
-
+    # this function returns a closure, if not used to it looks strange
+    # at first
+    
     s = zeros(length(I),length(J))
-    for j ∈ J
-        for i ∈ I
-            s[i,j] = a(i,j)
+    for (j,jj) ∈ enumerate(J)
+        for (i,ii) ∈ enumerate(I)
+            s[i,j] = a(ii,jj)
         end
     end
     s = inv(s)
 
     function u(ii)
         # check sizes!
-        ret = zeros(n)
-        for j ∈ 1:n
-            ret[j] = a(ii,j)
+        ret = zeros(length(J))
+        for (j,jj) ∈ enumerate(J)
+            ret[j] = a(ii,jj)
         end
         return ret
     end
 
     function v(jj)
         ret = zeros(length(I))
-        for i ∈ I
-            ret[i] = a(i,jj)
+        for (i,ii) ∈ enumerate(I)
+            ret[i] = a(ii,jj)
         end
         return ret
     end
 
+    # define the closure
     function rk(ii,jj)
-
+        return a(ii,jj) - u(ii)'*s*v(jj)
     end
 
     return rk
 end
 
+"""
+   find_pivot_fun(a, dims, i, I, J)
 
+retunr indices i,j that maximise a(i,j) using a heuristic (search
+along axes of a). dims array contains the size of a, i.e.
+a ∈ ℝ^(dims[1],dims[2]).
+
+"""
 function find_pivot_fun(a, dims, i, I, J)
     j = 1
     for n = 1:3
@@ -711,7 +732,47 @@ function mymax_fun(v, n, I)
 end
 
 
+"""
+    cur_fun(a, dims, I, J) -> c, u, r
 
+returns CUR decomposition of `a` given as function a(i,j). dims array
+defines sizes of a, i.e. a ∈ ℝ^(dims[1],dims[2]). I, J are the row and
+columns indices as returned from aca_fun.
+
+When using aca with functions for huge sizes be careful. This function creates **full matrices**!
+
+"""
+function cur_fun(a, dims, I, J)
+    m = dims[1]
+    n = dims[2]
+    c = zeros(m, length(J))
+    u = zeros(length(I),length(J))
+    r = zeros(length(I), n)
+
+    # set c to coloumns of a
+    for (j,jj) ∈ enumerate(J)
+        for i in 1:m
+            c[i,j] = a(i,jj)
+        end
+    end
+
+    # set r to rows of a
+    for j in 1:n
+        for (i,ii) ∈ enumerate(I)
+            r[i,j] = a(ii,j)
+        end
+    end
+
+    # first get a[I,J], then invert it
+    for (j,jj) ∈ enumerate(J)
+        for (i,ii) ∈ enumerate(I)
+            u[i,j] = a(ii,jj)
+        end
+    end
+    u = inv(u)
+
+    return c, u, r
+end
 
 """
    cur(a, i, j) -> C,U,R
