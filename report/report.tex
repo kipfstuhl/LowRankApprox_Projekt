@@ -12,6 +12,20 @@ DIV=calc,
 \usepackage{amsthm}
 \usepackage[hyperref, table]{xcolor}
 
+% set colours
+\providecolor{mycolor1}{RGB}{  9, 139, 232}
+\providecolor{mycolor2}{RGB}{235, 144,  68}
+\providecolor{mycolor3}{RGB}{ 57,  61, 130}
+\providecolor{mycolor4}{RGB}{181,  73,  25}
+\providecolor{mycolor5}{RGB}{ 25,  34, 181}
+
+
+% \addtokomafont{disposition}{\color{mycolor1}}
+% \addtokomafont{paragraph}{\normalcolor}
+% \addtokomafont{minisec}{\normalcolor}
+% \addtokomafont{descriptionlabel}{\color{mycolor1}}
+% \addtokomafont{labelinglabel}{\color{mycolor1}}
+
 
 \usepackage{graphicx}
 
@@ -39,6 +53,7 @@ DIV=calc,
 
 \usepackage[%
 % final
+draft
 ]
 {microtype}
 \usepackage{ellipsis}
@@ -221,7 +236,7 @@ full SVD is computed in my implementation.
 \paragraph{Results}
 
 As stated above my implementation uses the sequentially truncated
-HOSVD together with the error estimate from Corollary \label{cor:err}.
+HOSVD together with the error estimate from Corollary \ref{cor:err}.
 Some utilities like $m$--mode matricisation or $m$--mode matrix
 multiplication also have been implemented. All interesting
 functionality is in the file \texttt{tools.jl}. The other files just
