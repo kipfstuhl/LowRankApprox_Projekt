@@ -1,0 +1,248 @@
+\documentclass[%
+a4paper,
+%fontsize=10pt,
+parskip=half,
+DIV=calc,
+%draft=true
+]
+{scrartcl}
+
+
+\usepackage{amsmath, amssymb}
+\usepackage{amsthm}
+\usepackage[hyperref, table]{xcolor}
+
+% set colours
+\providecolor{mycolor1}{RGB}{  9, 139, 232}
+\providecolor{mycolor2}{RGB}{235, 144,  68}
+\providecolor{mycolor3}{RGB}{ 57,  61, 130}
+\providecolor{mycolor4}{RGB}{181,  73,  25}
+\providecolor{mycolor5}{RGB}{ 25,  34, 181}
+
+
+% \addtokomafont{disposition}{\color{mycolor1}}
+% \addtokomafont{paragraph}{\normalcolor}
+% \addtokomafont{minisec}{\normalcolor}
+% \addtokomafont{descriptionlabel}{\color{mycolor1}}
+% \addtokomafont{labelinglabel}{\color{mycolor1}}
+
+
+\usepackage{graphicx}
+
+
+\usepackage{luatextra}  % fontspec, luacode, metalogo, fixltx2e, luatexbase, lualibs
+% \usepackage{unicode-math}
+
+% fontfeatures vor dem Laden angeben.
+% \defaultfontfeatures{Scale=MatchLowercase, Ligatures=TeX}
+\defaultfontfeatures{Scale=MatchLowercase, Ligatures=TeX, Numbers=OldStyle}
+
+% \setmainfont{Linux Libertine Display O}[Numbers=OldStyle]
+% \setsansfont{Linux Biolinum O}[Numbers=OldStyle]
+
+% \setmainfont{TeX Gyre Pagella}
+% \setsansfont{TeX Gyre Heros}
+% \setsansfont{Linux Biolinum O}
+%\setmathfont{TeX Gyre Pagella}
+\setmainfont{Cormorant Garamond}
+\setsansfont{Roboto}
+
+\usepackage{polyglossia}
+\setdefaultlanguage{english}
+
+
+\usepackage[%
+% final
+draft
+]
+{microtype}
+\usepackage{ellipsis}
+
+\usepackage{hyperref}
+\hypersetup{
+ colorlinks=true,
+ linkcolor=mycolor1,
+ citecolor=mycolor2,
+ urlcolor=mycolor2,
+ unicode=true,
+ %pdfpagelabels=true,
+ %bookmarks=true,
+}
+\usepackage[numbered]{bookmark}
+
+% Verwende Titel und Autor aus dem Dokument
+\makeatletter
+\AtBeginDocument{
+  \hypersetup{
+    pdftitle={\@title},
+    pdfauthor={\@author},
+    pdfsubject={\@subject}
+  }
+}
+\makeatother
+
+\usepackage{cleveref}
+
+\usepackage{algorithm} % nach hyperref laden!
+
+\KOMAoptions{DIV=last}
+
+
+%%%%%%%%%%%%%%%%%
+% Nummern für Überschriften in den Rand.
+% Re-define \sectionformat:
+%\providecommand*{\sectionformat}{}
+\renewcommand*{\sectionformat}{\makebox[0pt][r]{\thesection\autodot\enskip}}
+% Re-define \subsectionformat:
+%\providecommand*{\subsectionformat}{}
+\renewcommand*{\subsectionformat}{\makebox[0pt][r]{\thesubsection\autodot\enskip}}
+% Re-define \subsubsectionformat:
+%\providecommand*{\subsubsectionformat}{}
+\renewcommand*{\subsubsectionformat}{\makebox[0pt][r]{\thesubsubsection\autodot\enskip}}
+
+\renewcommand*{\paragraphformat}{\makebox[0pt][r]{\theparagraph\autodot\enskip}}
+\renewcommand*{\subparagraphformat}{\makebox[0pt][r]{\thesubparagraph\autodot\enskip}}
+
+% auch die Fußnotenmarken in den Rand schieben. Der \marginparsep ist zu viel!
+% evtl. \textsuperscript streichen, dann wirds größer
+\deffootnote[0em]{0em}{1em}{\makebox[0pt][r]{\textsuperscript{\thefootnotemark}\enskip}}
+
+
+
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}[theorem]{Definition}
+
+
+\title{Low Rank Approximation -- Mini Project}
+\subtitle{HOSVD and ACA}
+\author{Jonas Kipfstuhl}
+\date{\today}
+% \institute{TUM}
+% \email{jonas.kipfstuhl@tum.de}
+
+
+\begin{document}
+\maketitle
+
+\section*{Introduction}
+\label{sec:intro}
+For the tasks that are to be solved here, some definitons are
+needed. For some fixed $n \in \mathbb{N}$ let
+$\xi(i) := \frac{i}{n+1}$. Now define two tensors
+$\mathcal{B}_1, \mathcal{B}_2 \in \mathbb{R}^{n \times n \times n}$ in
+fucntional form, i.\,e.
+$\mathcal{B}_i: \mathbb{N} \times \mathbb{N} \times \mathbb{N}
+\rightarrow \mathbb{R}$:
+\begin{align*}
+  \mathcal{B}_1 \left(i_1, i_2 i_3 \right) &:=& \sin\left(\xi(i_1) + \xi(i_2) + \xi(i_3)\right) \\
+  \mathcal{B}_2 \left(i_1, i_2 i_3 \right) &:=& \sqrt{\xi(i_1)^2 + \xi(i_2)^2 + \xi(i_3)^2}
+\end{align*}
+The goal of this project is to approximate the tensors in Tucker
+format.  For this task the Higher Order Singular Value Decomposition
+(HOSVD) and the generalized Adaptive Cross Approximation (ACA) are
+used.
+
+
+\section{Higher Order Singular Value Decomposition}
+\label{sec:ex1}
+\begin{quote}
+  Implement the HOSVD and compress $\mathcal{B}_1$ and
+  $\mathcal{B }_2$ for $n = 200$ in the Tucker decompostion, with
+  multilinear ranks chosen such that the norm of the error is bounded
+  by $10^{−4} \|\mathcal{B}_i\|$.  Report the obtained multilinear
+  ranks as well as the singular values of the three different
+  matricizations for $\mathcal{B}_1$ and $\mathcal{B}_2$.
+\end{quote}
+
+We had several techniques for approximating a tensor or a matrix by a
+lower rank tensor or matrix, respectively.  The driving idea behind
+all these methods is to store only information that is needed to
+represent the object.  When storing a full tensor or matrix that is of
+lower rank much data that does not contribute information is stored.
+On the one hand this may result in massive speed ups for calculations,
+on the other hand this allows for storage of huge high dimensional
+objects that would not be possible otherwise.
+
+A very early result in the lecture was the Eckart-Young--Mirsky
+theorem. This states that the truncated Singular Value Decomposition
+(SVD) is an optimal low rank approximation for the considered matrix.
+The HOSVD tries to make use of this result. Unfortunately neither the
+SVD nor the error bound generalizes easily to the higher dimensional
+case.
+
+For being able to use the SVD the tensor has to be represented as a
+matrix.  This can be done via a so called matricisation, the
+$\mu$--mode matricisation of a tensor $\mathcal{X}$ is denoted by
+$\mathcal{X}^{(\mu)}$.  With this one easily defines the multilinear
+rank $(r_1, \ldots, r_d)$ of a tensor as the tuple of the ranks from
+the matricisations.  This means $r_{\mu}$ is the rank of
+$\mathcal{X}^{(\mu)}$, for $\mu = 1, \ldots, d$. The HOSVD now tries
+to approximate each of the matricisations via a truncated
+SVD.
+
+\paragraph{Algorithm}
+
+Using this approach, the HOSVD is quite simple in concept. Given a
+tensor $\mathcal{X} \in \mathbb{R}^{n \times n \times n}$ calculate
+the truncated SVD for each $\mu$--mode matricisation
+\begin{equation*}
+  \mathcal{X}^{(\mu)} = U_{\mu}\Sigma_{\mu}V_{\mu}^T ,
+\end{equation*}
+where $\Sigma_{\mu} \in \mathbb{R}^{r_\mu \times r_\mu}$. Afterwards form the core tensor
+\begin{equation*}
+  \mathcal{C} := U_1^T \circ_1 U_2^T \circ_2 U_3^T \circ_3 \mathcal{X}.
+\end{equation*}
+The unitary matrices $U_{\mu}$ form the $\mu$--mode frames. If the
+full approximating tensor $\tilde{\mathcal{X}}$ is desired again it is formed as
+\begin{equation*}
+  \tilde{\mathcal{X}} := U_1 \circ_1 U_2 \circ_2 U_3 \circ_3 \mathcal{C}.
+\end{equation*}
+
+It is also possible to sequentially truncate the tensor after every
+SVD, not in one rush at the end.  This is called sequentially
+truncated HOSVD.  The advantage using this approach is less storage
+and also the following matricisations yield smaller matrices which
+results in faster SVDs.  The error bound stays essentially the same
+for both methods of truncation.  The implementation at hand uses the
+stHOSVD.
+
+The resulting storage requirements are
+$r_1 n + r_2 n + r_3 n + r_1 r_2 r_3$ for multilinear ranks
+$(r_1, r_2, r_3)$ in contrast to $n^3$.
+
+\paragraph{Approximation Error}
+
+In the description of the algorithm up to now the desired multilinear
+rank was given.  In real applications, however, this assumption is not
+true.  Usually some error bound has to be satisfied.  A error bound of
+the approximation by HOSVD can be obtained by using the singular
+values of the matricisations.  In the lecture this was stated as a corollary:
+\begin{corollary}
+  \label{cor:err}
+  Let $\sigma_k^{\mu}$ denote the $k$\textsuperscript{th} singular
+  value of $\mathcal{X}^{(\mu)}$.  Then the kapproximation
+  $\tilde{\mathcal{X}}$ obtained from the HOSVD satisfies
+  \begin{equation*}
+    \left\| \mathcal{X} - \tilde{\mathcal{X}} \right\|^2 \leq \sum_{\mu = 1}^3 \sum_{k = r_\mu + 1}^{n_\mu}
+    \left( \sigma_k^\mu \right)^2.
+  \end{equation*}
+\end{corollary}
+With this result it is possible to choose the multilinear ranks at
+runtime such that the error bound is fulfilled.  For this purpose the
+full SVD is computed in my implementation.
+
+\paragraph{Results}
+
+As stated above my implementation uses the sequentially truncated
+HOSVD together with the error estimate from Corollary \ref{cor:err}.
+Some utilities like $m$--mode matricisation or $m$--mode matrix
+multiplication also have been implemented. All interesting
+functionality is in the file \texttt{tools.jl}. The other files just
+import and use these tools.  For this first exercise the full tensors
+are formed, then the stHOSVD gets executed with these tensors
+returning a \texttt{tten} object. This is a rather lightweight struct
+holding the core tensor togehter with the mode frames.
+
+\end{document}
