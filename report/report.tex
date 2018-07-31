@@ -132,8 +132,8 @@ fucntional form, i.\,e.
 $\mathcal{B}_i: \mathbb{N} \times \mathbb{N} \times \mathbb{N}
 \rightarrow \mathbb{R}$:
 \begin{align*}
-  \mathcal{B}_1 \left(i_1, i_2 i_3 \right) &:=& \sin\left(\xi(i_1) + \xi(i_2) + \xi(i_3)\right) \\
-  \mathcal{B}_2 \left(i_1, i_2 i_3 \right) &:=& \sqrt{\xi(i_1)^2 + \xi(i_2)^2 + \xi(i_3)^2}
+  \mathcal{B}_1 \left(i_1, i_2, i_3 \right) &:=& \sin\left(\xi(i_1) + \xi(i_2) + \xi(i_3)\right) \\
+  \mathcal{B}_2 \left(i_1, i_2, i_3 \right) &:=& \sqrt{\xi(i_1)^2 + \xi(i_2)^2 + \xi(i_3)^2}
 \end{align*}
 The goal of this project is to approximate the tensors in Tucker
 format.  For this task the Higher Order Singular Value Decomposition
@@ -240,5 +240,55 @@ import and use these tools.  For this first exercise the full tensors
 are formed, then the stHOSVD gets executed with these tensors
 returning a \texttt{tten} object. This is a rather lightweight struct
 holding the core tensor togehter with the mode frames.
+
+%%%%%%%%
+% include figures
+% include tables (runtime for B1, B2 and several n
+%
+
+\section{Multilinear ranks of $\mathcal{B}_1$}
+\label{sec:mrb1}
+From the singular values as seen in
+%%%
+%%% include figure of first task
+%%%
+the plot of the first task, the multilinear ranks of $\mathcal{B}_1$
+seem to be 2 for all matricisations, i.\,e. $\mathcal{B}_1$ has
+multilinear rank $(2, 2, 2)$.
+
+In order to show this, have a look at the structure of $\mathcal{B}_1$
+and try to bring it in a form that looks like
+$f_1(x)g_1(y) + f_2(x)g_2(y)$.  This is in fact a sum of two rank one
+matrices expressed as functions of $x$ and $y$.  Only two variables
+are used, because here we have a matrix, not a tensor.
+\begin{align*}
+  \mathcal{B}_1 \left(i_1, i_2, i_3 \right) &= \sin\left(\xi(i_1) + \xi(i_2) + \xi(i_3)\right) \\
+                                           &= \sin\left(\xi(i_1)\right)\cos\left(\xi(i_2) + \xi(i_3)\right) +
+                                               \cos\left(\xi(i_1)\right)\sin\left(\xi(i_2) + \xi(i_3)\right)\\
+  &= f_1(x)g_1(y) + f_2(x)g_2(y)
+\end{align*}
+This is just the application of addition theorem for $\sin$.  The
+result shows that the $1$--mode matricisation of $\mathcal{B}_1$ has
+rank 2.  As the the $\xi(i_j)$ can be exchanged for $j$ ($\mathcal{B}_1$ is
+symmetric), this result holds true for the other matricisations as
+well.
+
+Note: in fact it was proven that $\mathcal{B}_1$ has multilinear rank
+$(2,2,2)$ as a function. Of course this is translates directly to the
+tensor seen as multidimensional array of numbers.
+
+\section{Matricisations of $\mathcal{B}_2$}
+\label{sec:matb2}
+Here the task is to show that all three matricisations of
+$\mathcal{B}_2$ are equal.
+
+\begin{align*}
+  \mathcal{B}_2^{(1)}(i, j) = \mathcal{B}_2 (j, k, l),
+\end{align*}
+where 
+
+First note that $\mathcal{B}_2$ again is
+symmetric, thus it suffices to 
+
 
 \end{document}
