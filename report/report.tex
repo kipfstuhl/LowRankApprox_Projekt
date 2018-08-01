@@ -188,7 +188,7 @@ case.
 For being able to use the SVD the tensor has to be represented as a
 matrix.  This can be done via a so called matricisation, the
 $\mu$--mode matricisation of a tensor $\mathcal{X}$ is denoted by
-$\mathcal{X}^{(\mu)}$.  With this one easily defines the multilinear
+$\mathcal{X}^{(\mu)}$.  With this, one easily defines the multilinear
 rank $(r_1, \ldots, r_d)$ of a tensor as the tuple of the ranks from
 the matricisations.  This means $r_{\mu}$ is the rank of
 $\mathcal{X}^{(\mu)}$, for $\mu = 1, \ldots, d$. The HOSVD now tries
@@ -208,14 +208,14 @@ where $\Sigma_{\mu} \in \mathbb{R}^{r_\mu \times r_\mu}$. Afterwards form the co
   \mathcal{C} := U_1^T \circ_1 U_2^T \circ_2 U_3^T \circ_3 \mathcal{X}.
 \end{equation*}
 The unitary matrices $U_{\mu}$ form the $\mu$--mode frames. If the
-full approximating tensor $\tilde{\mathcal{X}}$ is desired again it is formed as
+full approximating tensor $\tilde{\mathcal{X}}$ is desired again, it is formed as
 \begin{equation*}
   \tilde{\mathcal{X}} := U_1 \circ_1 U_2 \circ_2 U_3 \circ_3 \mathcal{C}.
 \end{equation*}
 
 It is also possible to sequentially truncate the tensor after every
 SVD, not in one rush at the end.  This is called sequentially
-truncated HOSVD.  The advantage using this approach is less storage
+truncated HOSVD (stHOSVD).  The advantage using this approach is less storage
 and also the following matricisations yield smaller matrices which
 results in faster SVDs.  The error bound stays essentially the same
 for both methods of truncation.  The implementation at hand uses the
@@ -223,7 +223,7 @@ stHOSVD.
 
 The resulting storage requirements are
 $r_1 n + r_2 n + r_3 n + r_1 r_2 r_3$ for multilinear ranks
-$(r_1, r_2, r_3)$ in contrast to $n^3$.
+$(r_1, r_2, r_3)$ in contrast to $n^3$ for the full tensor.
 
 \paragraph{Approximation Error}
 
@@ -235,7 +235,7 @@ values of the matricisations.  In the lecture this was stated as a corollary:
 \begin{corollary}
   \label{cor:err}
   Let $\sigma_k^{\mu}$ denote the $k$\textsuperscript{th} singular
-  value of $\mathcal{X}^{(\mu)}$.  Then the kapproximation
+  value of $\mathcal{X}^{(\mu)}$.  Then the approximation
   $\tilde{\mathcal{X}}$ obtained from the HOSVD satisfies
   \begin{equation*}
     \left\| \mathcal{X} - \tilde{\mathcal{X}} \right\|^2 \leq \sum_{\mu = 1}^3 \sum_{k = r_\mu + 1}^{n_\mu}
@@ -252,23 +252,26 @@ As stated above my implementation uses the sequentially truncated
 HOSVD together with the error estimate from Corollary \ref{cor:err}.
 Some utilities like $m$--mode matricisation or $m$--mode matrix
 multiplication also have been implemented. All interesting
-functionality is in the file \texttt{tools.jl}. The other files just
-import and use these tools.  For this first exercise the full tensors
-are formed, then the stHOSVD gets executed with these tensors
-returning a \texttt{tten} object. This is a rather lightweight struct
-holding the core tensor togehter with the mode frames.
+functionality is in the file \texttt{tools.jl}.  The other files just
+import and use these tools.  The file \texttt{script1.jl} generates
+the output for this section. Also the plots are generated with
+executing this file (call \texttt{'julia script1.jl'} from a shell).
+For this first exercise the full tensors are formed, then the stHOSVD
+gets executed with these tensors, returning a \texttt{tten}
+object. This is a rather lightweight struct holding the core tensor
+togehter with the mode frames.
 
-The resulting ranks and errors are displayed in table
-\ref{tab:hosvdrk}.  It is worth noting the excellent approximation of
-$\mathcal{B}_1$, even the absolute error is very small.  This
-indicates an intrinsic low rank structure.
+The resulting ranks and errors are displayed along with the running
+times in table \ref{tab:hosvdrk}.  It is worth noting the excellent
+approximation of $\mathcal{B}_1$, even the absolute error is very
+small.  This indicates an intrinsic low rank structure.
 \begin{table}[h]
   \centering
   \addfontfeatures{Numbers={Monospaced,Lining}}
-  \begin{tabular}[]{ccll}
-    & Multilinear Ranks & Relative Error & Absolute Error \\ \hline
-    $\mathcal{B}_1$ & $(2,2,2)$ & $6.6 \cdot 10^{-15}$  & $1.67 \cdot 10^{-11}$ \\
-    $\mathcal{B}_2$ & $(5,5,5)$ & $5.2 \cdot 10^{- 5}$  & $0.15$ \\
+  \begin{tabular}[]{cclll}
+    & Multilinear Ranks & Relative Error & Absolute Error & Elapsed Time\\ \hline
+    $\mathcal{B}_1$ & $(2,2,2)$ & $6.6 \cdot 10^{-15}$  & $1.67 \cdot 10^{-11}$ & 3.85 sec\\
+    $\mathcal{B}_2$ & $(5,5,5)$ & $5.2 \cdot 10^{- 5}$  & $0.15$  & 3.78 sec\\
   \end{tabular}
   \caption{Multilinear ranks of $\mathcal{B}_1$ and $\mathcal{B}_2$}
   \label{tab:hosvdrk}
@@ -378,8 +381,11 @@ matricisations. This is provably the best one can do in terms of
 correctness for euclidean and frobenius norm.  Nevertheless other
 approximation schemes, that have other advantages, can be used.  Here
 the adaptive cross approximation (ACA) is used.  This does not need
-the full matrix, it is possible to operate on a subset of the rows and
-coloumns of the full matrix in order to obtain the approximation.
+the full matrix, instead it is possible to operate on a subset of the
+rows and coloumns of the full matrix in order to obtain the
+approximation.  If the matrix is given as a function it is not
+necessary to evaluate this function at every single point, only some
+are needed for the ACA.
 
 \paragraph{Adaptive Cross Approximation}
 The goal of ACA is to approximate a matrix $A$ with a subset of its
@@ -394,20 +400,20 @@ To compute a good ACA there are several choices for the algorithm.  In
 the lecture ACA with full pivoting and ACA with partial pivoting were
 presented.  The algorithm chooses in every step $k$ one row and
 coloumn to minimise the residual of the previous step $R_{k-1}$.  For
-full pivotin the row and coloumn of the maximal element of $R_{k-1}$
-is coosen.
+full pivoting, the row and coloumn of the maximal element of $R_{k-1}$
+is cosen.
 \begin{equation*}
   (i_k, j_k) = \arg\max_{i,j} R_{k-1}(i, j)
 \end{equation*}
 This approach has the disadvantage of needing the full matrix
 $R_{k-1}$ at every step.
 
-The idea of not forming the full residuals explicitly but rather
-compute the entries recursively as needed leads to ACA with partial
-pivoting.  Here a simple line search is done for both $i$ and $j$.
+The idea of not forming the full residuals explicitly, but rather
+compute the entries recursively when needed, leads to ACA with partial
+pivoting.  There a simple line search is done for both $i$ and $j$.
 \begin{align*}
-  j^* &:= \arg\max_j R_{k-1})(i^*, j) \\
-  i^* &:= \arg\max_i R_{k-1})(i, j^*)
+  j^* &:= \arg\max_j R_{k-1}(i^*, j) \\
+  i^* &:= \arg\max_i R_{k-1}(i, j^*)
 \end{align*}
 
 
@@ -485,17 +491,23 @@ small matrix $S$, that is $A(I,J)^{-1}$, have to be calculated
 explicitly.  Everything else is done on demand via function
 evaluations.
 
-% This update is done in algorithm \ref{alg:rk}.
-% \begin{algorithm}
-%   \caption{update\_rk}
-%   \label{alg:rk}
-%   \begin{algorithmic}
-%     \Require $A: \mathbb{N}\times\mathbb{N} \rightarrow \mathbb{R}$, sets $I, J \subset \mathbb{N}$
-%     \State $S := (A(I,J))^{-1}$
-%     \State 
-
-
-%   \end{algorithmic}
-% \end{algorithm}
+\paragraph{Performance}
+\begin{table}[h]
+  \centering
+  \addfontfeatures{Numbers={Monospaced,Lining}}
+  \begin{tabular}[]{ccll}
+    & Multilinear Ranks & Relative Error &  Elapsed Time\\ \hline
+    $\mathcal{B}_1$ & $(2,2,2)$ & $2.4 \cdot 10^{-16}$  &  0.84 sec\\
+    $\mathcal{B}_2$ & $(6,13,18)$ & $5.9 \cdot 10^{- 5}$  &  2.94 sec\\
+  \end{tabular}
+  \caption{Multilinear ranks of $\mathcal{B}_1$ and $\mathcal{B}_2$ for $n=200$, computation with ACA}
+  \label{tab:acark}
+\end{table}
+Table \ref{tab:acark} gives an overview of the metrics for relatively
+small tensors of size $200 \times 200 \times 200$.  A massive speedup
+in comparison to the HOSVD, in particular for the example with the sinus
+function, can be seen.  This speed up compared to HOSVD is even larger
+for bigger tensors.  The used memory is not displayed, but the
+situation is comparable to the runtime improvement.
 
 \end{document}

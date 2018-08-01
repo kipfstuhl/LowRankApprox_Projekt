@@ -6,12 +6,20 @@ n = 200
 println("Using n=",n)
 xi = get_xi(n)
 
+
+# for JIT Compiler to do the work
+rhs = get_rhs_norm(50)
+rhs = get_rhs_sin(50)
+a1, s1 = hosvd(rhs, 1e-4, true)
+
 println()
 println("First example with sinus")
 
 rhs = get_rhs_sin(xi)
 println("Starting hosvd")
+tic()
 a1, s1 = hosvd(rhs, 1e-4, true)
+toc()
 println("The core tensor has size ",size(a1.core))
 residual = rhs - fullten(a1)
 err = norm(residual[:])
@@ -24,7 +32,9 @@ println("Second example with norm")
 
 rhs = get_rhs_norm(xi)
 println("Starting hosvd")
+tic()
 a2, s2 = hosvd(rhs, 1e-4, true)
+toc()
 println("The core tensor has size ", size(a2.core))
 residual = rhs - fullten(a2)
 err = norm(residual[:])
