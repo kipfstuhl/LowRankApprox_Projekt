@@ -5,6 +5,7 @@ export unfolding, folding, mode_n_mult, tten, hosvd
 export get_xi, get_rhs_sin, get_rhs_norm, fullten
 export rhs_sin, rhs_norm
 
+export aca, cur, cur_fun
 export unfolding_fun, aca_fun
 
 
@@ -313,7 +314,7 @@ function hosvd(a, ϵ::T=1e-4, sv::Bool=false) where {T<:AbstractFloat}
             if temp > ϵ²
                 # take the one satisfying the error bound, but stay
                 # within the bounds => check whether on bound or not
-                rᵢ = j==length(S) ? j : (j+1)
+                rᵢ = j==length(S) ? j : (j)
                 break
             end
         end
@@ -405,6 +406,37 @@ function fullten(a::tten{T}) where {T<:AbstractFloat}
     return res
 end
 
+
+
+"""
+    approx_aca(a, dims, ϵ)
+
+Compute an approximation of a in Tucker format. dim is an array
+holding the size of a.
+"""
+function approx_aca(a, dims, ϵ::Float64=1e-4)
+
+    #
+    d = length(dims)
+    frames =  Array{Array{Float64,2},1}(d)
+    
+    a_u = unfolding_fun(a, dims, 1)
+    dims_u = [dims[1], prod(dims[2:end]) ]
+    I,J = aca_fun(a_u, dims_u, ϵ)
+    C,U,R = cur_fun(a, dims_u, I, J)
+    frames[1] = C
+    core = folding(U*R, 1, dims)
+    
+    for i = 2:3
+        core_u = unfolding(core, i)
+        I,J = aca(core_u, ϵ)
+        C, U, R = cur(core_u, I, J)
+        frames[i] = C
+        core = folding(U*R, i, dims)
+    end
+
+    return tten(core, frames)
+end
 
 
 """
@@ -598,7 +630,7 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
             # Rk = update_rk(a, us, vs)
             println("I: ",I)
             println("J: ",J)
-            Rk = update_rk_new(a, I, J)
+            Rk = update_rk(a, I, J)
             k = k+1
 
             # use only the indices that contribute to the solution
