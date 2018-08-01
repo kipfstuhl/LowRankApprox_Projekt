@@ -411,8 +411,6 @@ Compute an approximation of a in Tucker format. dim is an array
 holding the size of a.
 """
 function approx_aca(a, dims, ϵ::Float64=1e-4)
-
-    #
     d = length(dims)
     frames =  Array{Array{Float64,2},1}(d)
     
@@ -646,8 +644,8 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
                 # temp += prod(map( ii->uk(ii)*us[l](ii), 1:dims[1])) *
                 #     prod(map( jj->ns[l](jj)*vk(jj), 1:dims[2]))
                 # use the handy |> piping syntax
-                temp += (1:dims[1] .|> ii->uk(ii)*us[l](ii) |> sum) *
-                    (1:dims[2] .|> jj->vs[l](jj)*vk(jj) |> sum)
+                temp += sum(1:dims[1] .|> ii->uk(ii)*us[l](ii)) *
+                    sum(1:dims[2] .|> jj->vs[l](jj)*vk(jj))
             end
 
             # calculate product of sqared norms
@@ -667,9 +665,6 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
             # k already increased
             k = k+1
             push!(Rk, update_rk(a, I_good, J_good))
-            println(k)
-            println(I)
-            println(J)
         end
 
     end
