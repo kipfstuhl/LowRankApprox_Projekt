@@ -6,7 +6,7 @@ export get_xi, get_rhs_sin, get_rhs_norm, fullten
 export rhs_sin, rhs_norm
 
 export aca, cur, cur_fun
-export unfolding_fun, aca_fun
+export unfolding_fun, aca_fun, approx_aca
 
 
 #### New interface for right-hand side
@@ -141,10 +141,6 @@ end
 @inline function ξ(i, n)
     i/(n+1)
 end
-
-# @inline function ξ(i)
-#     return i/(n+1)
-# end
 
 
 function get_rhs_sin(xi::Array{Float64,1})
@@ -420,11 +416,12 @@ function approx_aca(a, dims, ϵ::Float64=1e-4)
     d = length(dims)
     frames =  Array{Array{Float64,2},1}(d)
     
-    a_u = unfolding_fun(a, dims, 1)
+    a_u = unfolding_fun(a, 1, dims)
     dims_u = [dims[1], prod(dims[2:end]) ]
     I,J = aca_fun(a_u, dims_u, ϵ)
-    C,U,R = cur_fun(a, dims_u, I, J)
+    C,U,R = cur_fun(a_u, dims_u, I, J)
     frames[1] = C
+    dims[1] = length(I)
     core = folding(U*R, 1, dims)
     
     for i = 2:3
@@ -432,7 +429,9 @@ function approx_aca(a, dims, ϵ::Float64=1e-4)
         I,J = aca(core_u, ϵ)
         C, U, R = cur(core_u, I, J)
         frames[i] = C
+        dims[i] = length(I)
         core = folding(U*R, i, dims)
+        gc()
     end
 
     return tten(core, frames)
@@ -458,7 +457,7 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
     J_good = Int[]
     k = 1
     i = 1
-    i = 70
+    # i = 70
     normk2 = 0.0
     us = []
     vs = []
@@ -587,7 +586,7 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
     #R = Array{Any,1}([a])
     # R = []
     # push!(R, a)
-    Rk = a
+    # Rk = a
     maxrk = min(dims...)
     I = Int[]
     J = Int[]
@@ -598,28 +597,37 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
     normk2 = 0.0
     us = []
     vs = []
-
+    Rk = []
+    push!(Rk, a)
+    ϵ = ϵ*ϵ
+    
     while true
-        # i,j = find_pivot_fun(R[k], dims, i, I, J)
-        i,j = find_pivot_fun(Rk, dims, i, I, J)
+        i,j = find_pivot_fun(Rk[k], dims, i, I, J)
         append!(I, i)
         append!(J, j)
 
         # δ = R[k](i,j)
-        δ = Rk(i,j)
-        if abs(δ) < 10eps()
+        δ = Rk[k](i,j)
+        if abs(δ) < ϵ
             # if abs(δ) == 0
             #     return sort!(I),sort!(J)
             # end
             if length(I) == maxrk-1
                 warn("Return with maximal rank")
-                return sort!(I_good), sort!(J_good)
+                return I_good, J_good
+            end
+
+            i,j = find_pivot_fun(Rk[k], dims, i, I, J)
+            δ = Rk[k](i,j)
+            if abs(δ) < ϵ
+                warn("Could not find good pivot aymore.")
+                return I_good, J_good
             end
         else
             # uk = (ii)->R[k](ii,j)
             # vk = (jj)->R[k](i,jj)/δ
-            uk = (ii)->Rk(ii,j)
-            vk = (jj)->Rk(i,jj)
+            uk = (ii)->Rk[k](ii,j)
+            vk = (jj)->Rk[k](i,jj)/δ
             push!(us, uk)
             push!(vs, vk)
 
@@ -628,54 +636,45 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
             # push!(R, (ii,jj)->R[k](ii,jj)-uk(ii)*vk(jj) )
             # Rk = update_rk(Rk, uk, vk)
             # Rk = update_rk(a, us, vs)
-            println("I: ",I)
-            println("J: ",J)
-            Rk = update_rk(a, I, J)
-            k = k+1
 
-            # use only the indices that contribute to the solution
-            append!(I_good, i)
-            append!(J_good, j)
+            # update later, otherwise uk and vk get zero!!!!!
+            # Rk = update_rk(a, I, J)
+            # k = k+1
 
             temp = 0.0
             for l in 1:k-2
                 # temp += prod(map( ii->uk(ii)*us[l](ii), 1:dims[1])) *
                 #     prod(map( jj->ns[l](jj)*vk(jj), 1:dims[2]))
                 # use the handy |> piping syntax
-                temp += (1:dims[1] .|> ii->uk(ii)us[l](ii) |> prod) *
-                    (1:dims[2] .|> jj->ns[l](jj)*vk(jj) |> prod)
+                temp += (1:dims[1] .|> ii->uk(ii)*us[l](ii) |> sum) *
+                    (1:dims[2] .|> jj->vs[l](jj)*vk(jj) |> sum)
             end
 
             # calculate product of sqared norms
             # sqnormprod = prod(map( ii->uk(ii)*uk(ii), 1:dims[1])) * prod(map( jj->vk(jj)*vk(jj), 1:dims[2]))
-            sqnormprod = prod(1:dims[1] .|> ii->uk(ii)*uk(ii)) * prod(1:dims[2] .|> jj->vk(jj)*vk(jj))
+            sqnormprod = sum(1:dims[1] .|> ii->uk(ii)*uk(ii)) * sum(1:dims[2] .|> jj->vk(jj)*vk(jj))
             normk2 = normk2 + 2temp + sqnormprod
             
             if sqnormprod <= ϵ*normk2 || k==maxrk
-                return sort!(I_good), sort!(J_good)
+                return I_good, J_good
             end
+
+            # use only the indices that contribute to the solution
+            append!(I_good, i)
+            append!(J_good, j)
+
+            # update here, otherwise uk and vk would be zero
+            # k already increased
+            k = k+1
+            push!(Rk, update_rk(a, I_good, J_good))
+            println(k)
+            println(I)
+            println(J)
         end
 
     end
 end
 
-
-# """
-#     update_rk(r, u, v) -> r
-
-# takes a function r(i,j), arrays of function u, v and returns fucntion calculating
-# r(i,j)-u[:](i)*v[:](j) (that is, summing all products of u and v)
-# """
-# function update_rk(r, u, v)
-#     function rk(i,j)
-#         temp = r(i,j)
-#         for l ∈ length(u)
-#             temp -= u[l](i)*v[l](j)
-#         end
-#         temp
-#     end
-#     return rk
-# end
 
 """
     update_rk(a, I, J) -> r
@@ -693,6 +692,11 @@ function update_rk(a, I, J)
     # required
     # this function returns a closure, if not used to it looks strange
     # at first
+
+    if length(I) != length(J)
+        error("I and J have to be of equal size")
+        return
+    end
     
     s = zeros(length(I),length(J))
     for (j,jj) ∈ enumerate(J)
