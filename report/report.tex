@@ -28,7 +28,9 @@ DIV=calc,
 
 
 \usepackage{graphicx}
+% \graphicspath{{..}}
 
+\usepackage{subcaption}
 
 \usepackage{luatextra}  % fontspec, luacode, metalogo, fixltx2e, luatexbase, lualibs
 % \usepackage{unicode-math}
@@ -40,11 +42,12 @@ DIV=calc,
 % fot this combination Scale has to be Uppercase, otherwise Roboto is
 % way to small
 \defaultfontfeatures{Scale=MatchUppercase, Ligatures=TeX, Numbers=OldStyle}
+\defaultfontfeatures[\rmfamily]{Scale=1}
 
 \setmainfont{Cormorant Garamond}
 % \setsansfont{Roboto}
 \setsansfont{FiraSans}
-\setmonofont{FiraMono}
+\setmonofont{FiraMono}[Scale=MatchLowercase]
 
 % \setmainfont{BaskervilleF}      % Serif
 % \setsansfont{Cabin}             % Sans Serif
@@ -61,6 +64,9 @@ draft
 {microtype}
 \usepackage{ellipsis}
 
+\usepackage{float}              % for algorithm, load before hyperref
+\usepackage{algpseudocode}
+
 \usepackage{hyperref}
 \hypersetup{
  colorlinks=true,
@@ -72,6 +78,8 @@ draft
  %bookmarks=true,
 }
 \usepackage[numbered]{bookmark}
+
+\usepackage{algorithm}
 
 % Verwende Titel und Autor aus dem Dokument
 \makeatletter
@@ -117,6 +125,7 @@ draft
 \newtheorem{corollary}[theorem]{Corollary}
 \newtheorem{definition}[theorem]{Definition}
 
+\newcommand{\eps}{\varepsilon}
 
 \title{Low Rank Approximation -- Mini Project}
 \subtitle{HOSVD and ACA}
@@ -150,23 +159,24 @@ used.
 
 \section{Higher Order Singular Value Decomposition}
 \label{sec:ex1}
-\begin{quote}
+\begin{quotation}
+  \noindent
   Implement the HOSVD and compress $\mathcal{B}_1$ and
   $\mathcal{B }_2$ for $n = 200$ in the Tucker decompostion, with
   multilinear ranks chosen such that the norm of the error is bounded
   by $10^{−4} \|\mathcal{B}_i\|$.  Report the obtained multilinear
   ranks as well as the singular values of the three different
   matricizations for $\mathcal{B}_1$ and $\mathcal{B}_2$.
-\end{quote}
+\end{quotation}
 
 We had several techniques for approximating a tensor or a matrix by a
 lower rank tensor or matrix, respectively.  The driving idea behind
 all these methods is to store only information that is needed to
 represent the object.  When storing a full tensor or matrix that is of
 lower rank much data that does not contribute information is stored.
-On the one hand this may result in massive speed ups for calculations,
-on the other hand this allows for storage of huge high dimensional
-objects that would not be possible otherwise.
+On the one hand low rank approximations may result in speed
+ups for calculations, on the other hand this allows for storage of
+huge high dimensional objects that would not be possible otherwise.
 
 A very early result in the lecture was the Eckart-Young--Mirsky
 theorem. This states that the truncated Singular Value Decomposition
@@ -248,18 +258,57 @@ are formed, then the stHOSVD gets executed with these tensors
 returning a \texttt{tten} object. This is a rather lightweight struct
 holding the core tensor togehter with the mode frames.
 
+The resulting ranks and errors are displayed in table
+\ref{tab:hosvdrk}.  It is worth noting the excellent approximation of
+$\mathcal{B}_1$, even the absolute error is very small.  This
+indicates an intrinsic low rank structure.
+\begin{table}[h]
+  \centering
+  \addfontfeatures{Numbers={Monospaced,Lining}}
+  \begin{tabular}[]{ccll}
+    & Multilinear Ranks & Relative Error & Absolute Error \\ \hline
+    $\mathcal{B}_1$ & $(2,2,2)$ & $6.6 \cdot 10^{-15}$  & $1.67 \cdot 10^{-11}$ \\
+    $\mathcal{B}_2$ & $(5,5,5)$ & $5.2 \cdot 10^{- 5}$  & $0.15$ \\
+  \end{tabular}
+  \caption{Multilinear ranks of $\mathcal{B}_1$ and $\mathcal{B}_2$}
+  \label{tab:hosvdrk}
+\end{table}
+The different approximability is also seen in figure
+\ref{fig:eigvals}.  The eigenvalues of the matricisations of
+$\mathcal{B}_1$ are essentially 0, except for the first two.  For
+$\mathcal{B}_2$ the situation is different, the eigenvalues do not
+drop as rapidly.  The slow decay indicates harder approximability,
+this can also be seen by the results summarised in table
+\ref{tab:hosvdrk}.
+
 %%%%%%%%
-% include figures
 % include tables (runtime for B1, B2 and several n
 %
+\begin{figure}[h]
+  \begin{minipage}[b]{0.5\linewidth}
+    \centering
+    \includegraphics[width=\linewidth]{eigvalb1}
+    \subcaption{Eigenvalues of $\mathcal{B}_1$}
+  \end{minipage}
+  \begin{minipage}[b]{0.5\linewidth}
+    \includegraphics[width=\linewidth]{eigvalb2}
+    \subcaption{Eigenvalues of $\mathcal{B}_2$}
+  \end{minipage}
+  \caption{Eigenvalues of 1--mode matricisation of $\mathcal{B}_1$ and $\mathcal{B}_2$}
+  \label{fig:eigvals}
+\end{figure}
+
 
 \section{Multilinear ranks of $\mathcal{B}_1$}
 \label{sec:mrb1}
+\begin{quotation}
+  \noindent
+  Formulate a conjecture on the multilinear ranks of $\mathcal{B}_1$
+  and prove it.
+\end{quotation}
+
 From the singular values as seen in
-%%%
-%%% include figure of first task
-%%%
-the plot of the first task, the multilinear ranks of $\mathcal{B}_1$
+the plot (figure \ref{fig:eigvals}) of the first task, the multilinear ranks of $\mathcal{B}_1$
 seem to be 2 for all matricisations, i.\,e. $\mathcal{B}_1$ has
 multilinear rank $(2, 2, 2)$.
 
@@ -286,16 +335,167 @@ tensor seen as multidimensional array of numbers.
 
 \section{Matricisations of $\mathcal{B}_2$}
 \label{sec:matb2}
+\begin{quotation}
+  \noindent
+  Prove that the three different matricisations of $\mathcal{B}_2$ are
+  always identical.
+\end{quotation}
 Here the task is to show that all three matricisations of
 $\mathcal{B}_2$ are equal.
 
+For ease of notation use a multiindex for the coloumns of
+matricisation. This will show to come in very handy, in particular
+when the fact that all mode sizes are equal and the tensor has order
+3, i.\,e.  $\mathcal{B}_2 \in \mathbb{R}^{n \times n \times n}$ is
+used.
 \begin{align*}
-  \mathcal{B}_2^{(1)}(i, j) = \mathcal{B}_2 (j, k, l),
+  \mathcal{B}_2^{(1)}(i, (j, k)) &= \mathcal{B}_2 (i, j, k) \\
+  \mathcal{B}_2^{(2)}(i, (j, k)) &= \mathcal{B}_2 (j, i, k) \\
+  \mathcal{B}_3^{(2)}(i, (j, k)) &= \mathcal{B}_2 (j, k, i)
 \end{align*}
-where 
+The linear index $l$ for coloumns of the matricisation can easily be obtained by $l = j +(k-1)n$.
 
-First note that $\mathcal{B}_2$ again is
-symmetric, thus it suffices to 
+Now note that if the indices of $\mathcal{B}_2$ are permuted one
+obtains the same number, as addition is commutative.  This inplies, if
+the sum of the indices is the same also the number resulting of the
+evaluation of $\mathcal{B}_2$ is the same.  So the indices
+$(i, j, k)$, $(j, i, k)$, and $(j, k, i)$ all result in the same
+number.  Thus the three matricisations are the identical.
 
+\section{Adaptive Cross Approximation}
+\label{sec:aca}
+\begin{quotation}
+  \noindent
+  Develop and implement a variant of the HOSVD that uses DEIM or
+  adaptive cross approximation instead of one or all three involved
+  matricisations. Apply it to $\mathcal{B}_1$ and
+  $\mathcal{B}_2$. What is the largest value of $n$ you can handle?
+\end{quotation}
+
+\paragraph{Motivation}
+The HOSVD uses the truncated SVD to approximate the
+matricisations. This is provably the best one can do in terms of
+correctness for euclidean and frobenius norm.  Nevertheless other
+approximation schemes, that have other advantages, can be used.  Here
+the adaptive cross approximation (ACA) is used.  This does not need
+the full matrix, it is possible to operate on a subset of the rows and
+coloumns of the full matrix in order to obtain the approximation.
+
+\paragraph{Adaptive Cross Approximation}
+The goal of ACA is to approximate a matrix $A$ with a subset of its
+own columns and rows. These subsets are denoted by $I$ and $J$,
+respectively.  The approximation $\tilde{A}$ is then given by
+\begin{equation*}
+  \tilde{A} = A(:,J) S^{-1} A(I,:)
+\end{equation*}
+In this equation $S$ is $A(I,J)$.
+
+To compute a good ACA there are several choices for the algorithm.  In
+the lecture ACA with full pivoting and ACA with partial pivoting were
+presented.  The algorithm chooses in every step $k$ one row and
+coloumn to minimise the residual of the previous step $R_{k-1}$.  For
+full pivotin the row and coloumn of the maximal element of $R_{k-1}$
+is coosen.
+\begin{equation*}
+  (i_k, j_k) = \arg\max_{i,j} R_{k-1}(i, j)
+\end{equation*}
+This approach has the disadvantage of needing the full matrix
+$R_{k-1}$ at every step.
+
+The idea of not forming the full residuals explicitly but rather
+compute the entries recursively as needed leads to ACA with partial
+pivoting.  Here a simple line search is done for both $i$ and $j$.
+\begin{align*}
+  j^* &:= \arg\max_j R_{k-1})(i^*, j) \\
+  i^* &:= \arg\max_i R_{k-1})(i, j^*)
+\end{align*}
+
+
+\paragraph{Implementation}
+The algorithm presented in the lecture had to be adjusted in order to
+work for the purpose of this exercise.  There are two implementations
+of the ACA, one for matrices given in functional form, i.\,e. a
+function taking two indices as input and returning the number at this
+index, the other taking a full array as input. Both return the index
+sets $I$ and $J$ for the approximation. The output matrices have to be
+formed afterwards.
+
+The algorithm for full matrices is shown in algorithm \ref{alg:aca_full}
+\begin{algorithm}
+  \caption{ACA for full matrices}
+  \label{alg:aca_full}
+  \begin{algorithmic}[1]
+    \Require $A \in \mathbb{R}^{n \times m}, \eps$
+    \State Set $R_0 = A: k=0: i=1$
+    \State Set $I_{seen}, J_{seen} = \{\}: I^*,J^* = \{\}; \|A_1\|_F := 0$
+    \Loop
+      \State $i,j := find\_pivot(R_{k-1}, i, I_{seen}, J_{seen})$
+      \State $I_{seen} := I_{seen} \cup \{i\}; J_{seen} = J_{seen} \cup \{j\}$
+      \State $\delta_k := R_{k-1}(i,j)$
+      \If{$| \delta | \leq \eps$}
+        \If{$| I_{seen} | = \min (n, m) - 1$}
+          \State \textbf{return} $I^*, J^*$
+        \EndIf
+        \State $i,j := find\_pivot(R_{k-1}, i, I_{seen}, J_{seen})$\Comment{retry one time}
+        \State $\delta_k := R_{k-1}(i,j)$
+        \If{$| \delta | \leq \eps$}
+          \If{$| I_{seen} | = \min (n, m) - 1$}
+            \State \textbf{return} $I^*, J^*$
+          \EndIf
+        \EndIf
+      \Else
+        \State $u_k := R_{k-1}(:,j); v_k := R_{k-1}(i,:)^T/\delta$
+        \State $R_k := R_{k-1} - u_k v_k$
+        \State $k := k+1$
+        \State $I^* = I^* \cup \{i\}, J^* = J^* \cup \{j\}$
+        \State $\| A_{k} \|_F^2 := \| A_{k-1} \|_F^2 + 2\sum_{j=1}^k u_k^T u_j v_j v_k^T + u_k^T u_K v_k v_k^T$
+        \If{$u_k^T u_k v_k v_k^T \leq \eps \| A_{k} \|_F^2$ or $k=\min(n,m)$}
+          \State \textbf{return} $I^*, J^*$
+        \EndIf
+      \EndIf
+    \EndLoop
+  \end{algorithmic}
+\end{algorithm}
+The function \texttt{find\_pivot} used in algorithm \ref{alg:aca_full}
+is a very simple line search, see algortihm \ref{alg:pivot}. It is
+iterated three times in order to get slightly better results than
+using just one iteration.
+\begin{algorithm}
+  \caption{find\_pivot}
+  \label{alg:pivot}
+  \begin{algorithmic}[1]
+    \Require $A \in \mathbb{R}^{n \times m}, i \in \mathbb{N}$, sets $I, J \subset \mathbb{N}$
+    \For{$l = 1,2,3$}
+      \State $j = \arg\max_{j \notin J} |A(i,j)|$
+      \State $i = \arg\max_{i \notin I} |A(i,j)|$
+    \EndFor
+    \State \textbf{return} $i, j$
+  \end{algorithmic}
+\end{algorithm}
+
+The ACA used for matrices given as functions is essentially
+implemented the same way.  Only the updates of the residuals is more
+involved.  In every step $R_k$ is recalculated from scratch.  In this
+setting $R_k$ is a function returning
+$(A(:,J)A(I,J)^{-1}A(I,:))_{i,j}$ for input $i, j$.  This is done by
+first calculating the inverse of $A(I,J)$, then this is multiplied
+with $A(i,J)$ and $A(I,j)$ from left and right, respectively.  The
+advantage of this approach is, that only two small vectors and the
+small matrix $S$, that is $A(I,J)^{-1}$, have to be calculated
+explicitly.  Everything else is done on demand via function
+evaluations.
+
+% This update is done in algorithm \ref{alg:rk}.
+% \begin{algorithm}
+%   \caption{update\_rk}
+%   \label{alg:rk}
+%   \begin{algorithmic}
+%     \Require $A: \mathbb{N}\times\mathbb{N} \rightarrow \mathbb{R}$, sets $I, J \subset \mathbb{N}$
+%     \State $S := (A(I,J))^{-1}$
+%     \State 
+
+
+%   \end{algorithmic}
+% \end{algorithm}
 
 \end{document}
