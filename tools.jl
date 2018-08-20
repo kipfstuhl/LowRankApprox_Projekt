@@ -397,43 +397,43 @@ function fullten(a::tten{T}) where {T<:AbstractFloat}
     res = a.core
     for i in 1:length(a.frames)
         res = mode_n_mult(res, i, a.frames[i])
-        gc()
+        GC.gc()
     end
     return res
 end
 
 
 
-"""
-    approx_aca(a, dims, ϵ)
+# """
+#     approx_aca(a, dims, ϵ)
 
-Compute an approximation of a in Tucker format. dim is an array
-holding the size of a.
-"""
-function approx_aca(a, dims, ϵ::Float64=1e-4)
-    d = length(dims)
-    frames =  Array{Array{Float64,2},1}(d)
+# Compute an approximation of a in Tucker format. dim is an array
+# holding the size of a.
+# """
+# function approx_aca(a, dims, ϵ::Float64=1e-4)
+#     d = length(dims)
+#     frames =  Array{Array{Float64,2},1}(d)
     
-    a_u = unfolding_fun(a, 1, dims)
-    dims_u = [dims[1], prod(dims[2:end]) ]
-    I,J = aca_fun(a_u, dims_u, ϵ)
-    C,U,R = cur_fun(a_u, dims_u, I, J)
-    frames[1] = C
-    dims[1] = length(I)
-    core = folding(U*R, 1, dims)
+#     a_u = unfolding_fun(a, 1, dims)
+#     dims_u = [dims[1], prod(dims[2:end]) ]
+#     I,J = aca_fun(a_u, dims_u, ϵ)
+#     C,U,R = cur_fun(a_u, dims_u, I, J)
+#     frames[1] = C
+#     dims[1] = length(I)
+#     core = folding(U*R, 1, dims)
     
-    for i = 2:3
-        core_u = unfolding(core, i)
-        I,J = aca(core_u, ϵ)
-        C, U, R = cur(core_u, I, J)
-        frames[i] = C
-        dims[i] = length(I)
-        core = folding(U*R, i, dims)
-        gc()
-    end
+#     for i = 2:3
+#         core_u = unfolding(core, i)
+#         I,J = aca(core_u, ϵ)
+#         C, U, R = cur(core_u, I, J)
+#         frames[i] = C
+#         dims[i] = length(I)
+#         core = folding(U*R, i, dims)
+#         gc()
+#     end
 
-    return tten(core, frames)
-end
+#     return tten(core, frames)
+# end
 
 
 """
@@ -577,6 +577,106 @@ end
 
 
 
+"""
+    update_rk(a, I, J) -> r
+
+takes a function a(i,j), arrays if indices I, J and returns function
+calculating the residual a - u*s*v'. Where u are columns J of a, v are
+rows I of a, and s is inverse of a(I,J).
+"""
+function update_rk(a, I, J)
+    # check this again! Not sure this works
+    #
+    # Idea: compute s = inv(a(I,J))
+    # then compute a - u*s*v'
+    # for the last computation use only the rows and columns that are
+    # required
+    # this function returns a closure, if not used to it looks strange
+    # at first
+
+    if length(I) != length(J)
+        error("I and J have to be of equal size")
+        return
+    end
+    
+    s = zeros(length(I),length(J))
+    for (j,jj) ∈ enumerate(J)
+        for (i,ii) ∈ enumerate(I)
+            s[i,j] = a(ii,jj)
+        end
+    end
+    s = inv(s)
+
+    function u(ii)
+        # check sizes!
+        ret = zeros(length(J))
+        for (j,jj) ∈ enumerate(J)
+            ret[j] = a(ii,jj)
+        end
+        return ret
+    end
+
+    function v(jj)
+        ret = zeros(length(I))
+        for (i,ii) ∈ enumerate(I)
+            ret[i] = a(ii,jj)
+        end
+        return ret
+    end
+
+    # define the closure
+    function rk(ii,jj)
+        return a(ii,jj) - u(ii)'*s*v(jj)
+    end
+
+    return rk
+end
+
+"""
+   find_pivot_fun(a, dims, i, I, J)
+
+retunr indices i,j that maximise a(i,j) using a heuristic (search
+along axes of a). dims array contains the size of a, i.e.
+a ∈ ℝ^(dims[1],dims[2]).
+
+"""
+function find_pivot_fun(a, dims, i, I, J)
+    j = 1
+    for n = 1:3
+        a1 = jj -> abs(a(i,jj))
+        # maxval, j = mymax_fun( jj-> abs(a(i,jj)), dims[2], J)
+        maxval, j = mymax_fun(a1, dims[2], J)
+        a2 = ii -> abs(a(ii,j))
+        # maxval, i = mymax_fun( ii-> abs(a(ii,j)), dims[1], I)
+        maxval, i = mymax_fun(a2, dims[1], I)
+    end
+    return i,j
+end
+
+
+"""
+    mymax_fun(v, n, I)
+
+return maximum value of function v and index ∈ {1...n}∖I
+"""
+function mymax_fun(v, n, I)
+    indices = setdiff(1:n, I)
+    ind = min(indices...)
+    # maxval = v(ind)
+    maxval = Base.invokelatest(v, ind)
+    for i ∈ indices
+        # if v(i) > maxval
+        if Base.invokelatest(v, i) > maxval
+            # maxval = v(i)
+            maxval = Base.invokelatest(v, i)
+            ind = i
+        end
+    end
+    return maxval, ind
+end
+
+
+
 
 
 
@@ -670,99 +770,6 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
     end
 end
 
-
-"""
-    update_rk(a, I, J) -> r
-
-takes a function a(i,j), arrays if indices I, J and returns function
-calculating the residual a - u*s*v'. Where u are columns J of a, v are
-rows I of a, and s is inverse of a(I,J).
-"""
-function update_rk(a, I, J)
-    # check this again! Not sure this works
-    #
-    # Idea: compute s = inv(a(I,J))
-    # then compute a - u*s*v'
-    # for the last computation use only the rows and columns that are
-    # required
-    # this function returns a closure, if not used to it looks strange
-    # at first
-
-    if length(I) != length(J)
-        error("I and J have to be of equal size")
-        return
-    end
-    
-    s = zeros(length(I),length(J))
-    for (j,jj) ∈ enumerate(J)
-        for (i,ii) ∈ enumerate(I)
-            s[i,j] = a(ii,jj)
-        end
-    end
-    s = inv(s)
-
-    function u(ii)
-        # check sizes!
-        ret = zeros(length(J))
-        for (j,jj) ∈ enumerate(J)
-            ret[j] = a(ii,jj)
-        end
-        return ret
-    end
-
-    function v(jj)
-        ret = zeros(length(I))
-        for (i,ii) ∈ enumerate(I)
-            ret[i] = a(ii,jj)
-        end
-        return ret
-    end
-
-    # define the closure
-    function rk(ii,jj)
-        return a(ii,jj) - u(ii)'*s*v(jj)
-    end
-
-    return rk
-end
-
-"""
-   find_pivot_fun(a, dims, i, I, J)
-
-retunr indices i,j that maximise a(i,j) using a heuristic (search
-along axes of a). dims array contains the size of a, i.e.
-a ∈ ℝ^(dims[1],dims[2]).
-
-"""
-function find_pivot_fun(a, dims, i, I, J)
-    j = 1
-    for n = 1:3
-        maxval, j = mymax_fun( jj-> abs(a(i,jj)), dims[2], J)
-        maxval, i = mymax_fun( ii-> abs(a(ii,j)), dims[1], I)
-    end
-    return i,j
-end
-
-
-"""
-    mymax_fun(v, n, I)
-
-return maximum value of function v and index ∈ {1...n}∖I
-"""
-function mymax_fun(v, n, I)
-    indices = setdiff(1:n, I)
-    ind = min(indices...)
-    maxval = v(ind)
-    for i ∈ indices
-        if v(i) > maxval
-            maxval = v(i)
-            ind = i
-        end
-    end
-    return maxval, ind
-end
-
-
 """
     cur_fun(a, dims, I, J) -> c, u, r
 
@@ -814,6 +821,45 @@ indiex sets i and j.
 function cur(a, i, j)
     return a[:,j], inv(a[i,j]), a[i,:]
 end
+
+
+
+
+
+
+"""
+    approx_aca(a, dims, ϵ)
+
+Compute an approximation of a in Tucker format. dim is an array
+holding the size of a.
+"""
+function approx_aca(a, dims, ϵ::Float64=1e-4)
+    d = length(dims)
+    frames =  Array{Array{Float64,2},1}(undef, d)
+    
+    a_u = unfolding_fun(a, 1, dims)
+    dims_u = [dims[1], prod(dims[2:end]) ]
+    I,J = aca_fun(a_u, dims_u, ϵ)
+    C,U,R = cur_fun(a_u, dims_u, I, J)
+    frames[1] = C
+    dims[1] = length(I)
+    core = folding(U*R, 1, dims)
+    
+    for i = 2:3
+        core_u = unfolding(core, i)
+        I,J = aca(core_u, ϵ)
+        C, U, R = cur(core_u, I, J)
+        frames[i] = C
+        dims[i] = length(I)
+        core = folding(U*R, i, dims)
+        gc()
+    end
+
+    return tten(core, frames)
+end
+
+
+
 
 
 
