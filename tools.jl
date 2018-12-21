@@ -605,7 +605,7 @@ function update_rk(a, I, J)
     s = zeros(length(I),length(J))
     for (j,jj) ∈ enumerate(J)
         for (i,ii) ∈ enumerate(I)
-            s[i,j] = a(ii,jj)
+            s[i,j] = Base.invokelatest(a, ii,jj)
         end
     end
     s = inv(s)
@@ -614,7 +614,7 @@ function update_rk(a, I, J)
         # check sizes!
         ret = zeros(length(J))
         for (j,jj) ∈ enumerate(J)
-            ret[j] = a(ii,jj)
+            ret[j] = Base.invokelatest(a, ii,jj)
         end
         return ret
     end
@@ -622,14 +622,14 @@ function update_rk(a, I, J)
     function v(jj)
         ret = zeros(length(I))
         for (i,ii) ∈ enumerate(I)
-            ret[i] = a(ii,jj)
+            ret[i] = Base.invokelatest(a, ii,jj)
         end
         return ret
     end
 
     # define the closure
     function rk(ii,jj)
-        return a(ii,jj) - u(ii)'*s*v(jj)
+        return Base.invokelatest(a, ii,jj) - u(ii)'*s*v(jj)
     end
 
     return rk
@@ -708,7 +708,7 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
         append!(J, j)
 
         # δ = R[k](i,j)
-        δ = Rk[k](i,j)
+        δ = Base.invokelatest(Rk[k], i,j)
         if abs(δ) < ϵ
             # if abs(δ) == 0
             #     return sort!(I),sort!(J)
@@ -727,8 +727,10 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
         else
             # uk = (ii)->R[k](ii,j)
             # vk = (jj)->R[k](i,jj)/δ
-            uk = (ii)->Rk[k](ii,j)
-            vk = (jj)->Rk[k](i,jj)/δ
+            # uk = (ii)->Rk[k](ii,j)
+            # vk = (jj)->Rk[k](i,jj)/δ
+            uk = (ii)->Base.invokelatest(Rk[k], ii,j)
+            vk = (jj)->Base.invokelatest(Rk[k],i,jj)/δ
             push!(us, uk)
             push!(vs, vk)
 
@@ -793,21 +795,21 @@ function cur_fun(a, dims, I, J)
     # set c to coloumns of a
     for (j,jj) ∈ enumerate(J)
         for i in 1:m
-            c[i,j] = a(i,jj)
+            c[i,j] = Base.invokelatest(a, i,jj)
         end
     end
 
     # set r to rows of a
     for j in 1:n
         for (i,ii) ∈ enumerate(I)
-            r[i,j] = a(ii,j)
+            r[i,j] = Base.invokelatest(a, ii,j)
         end
     end
 
     # first get a[I,J], then invert it
     for (j,jj) ∈ enumerate(J)
         for (i,ii) ∈ enumerate(I)
-            u[i,j] = a(ii,jj)
+            u[i,j] = Base.invokelatest(a, ii,jj)
         end
     end
     u = inv(u)
