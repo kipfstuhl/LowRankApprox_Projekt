@@ -9,6 +9,8 @@ export aca, cur, cur_fun
 export unfolding_fun, aca_fun, approx_aca
 
 
+using LinearAlgebra
+
 #### New interface for right-hand side
 # This can be used more like functions.
 # For any other function on the right hand side,
@@ -91,7 +93,8 @@ function unfolding_fun_expr(a, n, dims)
     # array based version.
     if n == 1
         ret = :( (i,j) ->
-                 $a(i, ind2sub($ind,j)...)
+                 # $a(i, ind2sub($ind,j)...)
+                 $a(i, CartesianIndices($ind)[j][1], CartesianIndices($ind)[j][2])
                  # if rem(j,$ind)==0
                  # a(i,$ind,div(j,$ind))
                  # else
@@ -100,7 +103,7 @@ function unfolding_fun_expr(a, n, dims)
                  )
     elseif n == 2
         ret = :( (i,j) ->
-                 $a(ind2sub($ind,j)[1],i,ind2sub($ind,j)[2])
+                 $a(CartesianIndices($ind)[j][1], i, CartesianIndices($ind)[j][2])
                  # if rem(j,$ind)==0
                  # a($ind,i,div(j,$ind))
                  # else
@@ -109,7 +112,7 @@ function unfolding_fun_expr(a, n, dims)
                  )
     elseif n==3
         ret = :( (i,j) ->
-                 $a(ind2sub($ind,j)...,i)
+                 $a(CartesianIndices($ind)[j][1], CartesianIndices($ind)[j][2], i)
                  # if rem(j,$ind)==0
                  # a($ind,div(j,$ind),i)
                  # else
@@ -145,7 +148,7 @@ end
 
 function get_rhs_sin(xi::Array{Float64,1})
     n = length(xi)
-    rhs = Array{Float64,3}((n,n,n))
+    rhs = Array{Float64,3}(undef, (n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
@@ -157,7 +160,7 @@ function get_rhs_sin(xi::Array{Float64,1})
 end
 
 function get_rhs_sin(n::Int)
-    rhs = Array{Float64,3}((n,n,n))
+    rhs = Array{Float64,3}(undef, (n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
@@ -173,7 +176,7 @@ function get_rhs_sin_opt(n::Int)
     # this function retruns different values
     # this is due to machine arithmetic and
     # the precomputation of the denominator
-    rhs = Array{Float64,3}((n,n,n))
+    rhs = Array{Float64,3}(undef, (n,n,n))
     den::Float64 = 1.0/(n+1)
     @inbounds for i in 1:n
         for j in 1:n
@@ -187,7 +190,7 @@ end
 
 
 function get_rhs_norm(n::Int)
-    rhs = Array{Float64,3}((n,n,n))
+    rhs = Array{Float64,3}(undef, (n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
@@ -200,7 +203,7 @@ end
 
 function get_rhs_norm(xi::Array{Float64,1})
     n = length(xi)
-    rhs = Array{Float64,3}((n,n,n))
+    rhs = Array{Float64,3}(undef, (n,n,n))
     @inbounds for i in 1:n
         for j in 1:n
             @simd for k in 1:n
@@ -297,9 +300,9 @@ function hosvd(a, ϵ::T=1e-4, sv::Bool=false) where {T<:AbstractFloat}
     ϵ = ϵ/sqrt(d) * norm(a[:],2) # divide relative error equal to all dimensions
     ϵ² = ϵ*ϵ                     # use the sqare for cheaper comparison
 
-    frames = Array{Array{Float64,2},1}(d)
+    frames = Array{Array{Float64,2},1}(undef, d)
     if sv
-        svs = Array{Array{Float64,1},1}(d)
+        svs = Array{Array{Float64,1},1}(undef, d)
     end
     for i in 1:d
         U,S,V = svd(unfolding(a,i))
@@ -321,12 +324,12 @@ function hosvd(a, ϵ::T=1e-4, sv::Bool=false) where {T<:AbstractFloat}
         # this works as the remainder S*V is just the same as
         # U'*A = U'*U*A*V', as U is orthogonal
         dims[i] = rᵢ
-        a = folding(diagm(S[1:rᵢ])*V[:,1:rᵢ]',i,dims);
+        a = folding(diagm(0=>S[1:rᵢ])*V[:,1:rᵢ]',i,dims);
         if sv
             svs[i] = S
         end
         # garbage collection makes life easier and code faster
-        gc()
+        GC.gc()
     end
     if sv
         return tten(a,frames), svs
@@ -343,7 +346,7 @@ function hosvd2(a, ranks::Vector{T}) where {T<:Int}
     d = ndims(a)
     @assert(d==length(ranks), "dimension mismatch")
 
-    frames = Array{Array{Float64,2},1}(d)
+    frames = Array{Array{Float64,2},1}(undef, d)
     for i in 1:d
         U = svd(unfolding(a,i))
         frames[i] = U[:, 1:ranks[i]]
@@ -366,7 +369,7 @@ function hosvd2(a, tol::T) where {T<:AbstractFloat}
     d = ndims(a)
     tol = tol/sqrt(d) * norm(a[:],2)
 
-    frames = Array{Array{Float64,2},1}(d)
+    frames = Array{Array{Float64,2},1}(undef, d)
     for i in 1:d
         U,S = svd(unfolding(a,i))
         r_i = length(S)
@@ -481,7 +484,7 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
         if abs(δ) < ϵ
             if length(I) == maxrk - 1
                 # if this happens, no proper LRA has been calculated
-                warn("Return with maximal rank => no Low Rank Approximation")
+                @warn("Return with maximal rank => no Low Rank Approximation")
                 return I_good,J_good
             end
 
@@ -494,7 +497,7 @@ function aca(a::Array{Float64,2},ϵ::Float64=1e-4)
             i,j = find_pivot(Rk, i, I, J)
             δ = Rk[i,j]
             if abs(δ) < ϵ
-                warn("Could not find good pivot anymore.")
+                @warn("Could not find good pivot anymore.")
                 return I_good,J_good
             end
         else
@@ -711,14 +714,14 @@ function aca_fun(a, dims, ϵ::Float64=1e-4)
             #     return sort!(I),sort!(J)
             # end
             if length(I) == maxrk-1
-                warn("Return with maximal rank")
+                @warn("Return with maximal rank")
                 return I_good, J_good
             end
 
             i,j = find_pivot_fun(Rk[k], dims, i, I, J)
             δ = Rk[k](i,j)
             if abs(δ) < ϵ
-                warn("Could not find good pivot aymore.")
+                @warn("Could not find good pivot aymore.")
                 return I_good, J_good
             end
         else

@@ -1,6 +1,7 @@
 
 include("tools.jl")
-using tools
+using Main.tools
+using LinearAlgebra
 
 n = 200
 println("Using n=",n)
@@ -17,9 +18,10 @@ println("First example with sinus")
 
 rhs = get_rhs_sin(xi)
 println("Starting hosvd")
-tic()
-a1, s1 = hosvd(rhs, 1e-4, true)
-toc()
+# tic()
+elapsed_time = @elapsed a1, s1 = hosvd(rhs, 1e-4, true)
+# toc()
+println("Elapsed time: ", elapsed_time)
 println("The core tensor has size ",size(a1.core))
 residual = rhs - fullten(a1)
 err = norm(residual[:])
@@ -32,9 +34,10 @@ println("Second example with norm")
 
 rhs = get_rhs_norm(xi)
 println("Starting hosvd")
-tic()
-a2, s2 = hosvd(rhs, 1e-4, true)
-toc()
+# tic()
+elapsed_time = @elapsed a2, s2 = hosvd(rhs, 1e-4, true)
+# toc()
+println("Elapsed time: ", elapsed_time)
 println("The core tensor has size ", size(a2.core))
 residual = rhs - fullten(a2)
 err = norm(residual[:])
@@ -42,12 +45,17 @@ println("The error ||rhs - full(a2)||_F is: ", err)
 println("10⁻⁴ ⋅ ||B₂|| ", 1e-4*norm(rhs[:]))
 println("Relative Error is: ", err/norm(rhs[:]))
 
-println("creating Plots")
-ENV["GKSwstype"]="png"
-using Plots;
 
-p1 = scatter(s1[1],  yaxis=(:log))
-savefig(p1, "report/eigvalb1.png")
 
-p2 = scatter(s2[1], yaxis=(:log))
-savefig(p2, "report/eigvalb2.png")
+### Plotting
+# println("creating Plots")
+# ENV["GKSwstype"]="png"
+# using Plots;
+
+# p1 = scatter(s1[1],  yaxis=(:log))
+# # savefig(p1, "report/eigvalb1.png")
+# savefig(p1, "eigvalb1.png")
+
+# p2 = scatter(s2[1], yaxis=(:log))
+# # savefig(p2, "report/eigvalb2.png")
+# savefig(p2, "eigvalb2.png")
